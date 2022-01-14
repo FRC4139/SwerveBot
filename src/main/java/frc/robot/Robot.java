@@ -4,7 +4,13 @@
 
 package frc.robot;
 
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
+import com.ctre.phoenix.sensors.CANCoder;
+
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -17,9 +23,16 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends TimedRobot {
   private static final String kDefaultAuto = "Default";
   private static final String kCustomAuto = "My Auto";
+  private static final double normalization = 0.5;
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
+  private XboxController controller;
+  private WPI_TalonFX steerTalon, driveTalon;
+  private SlewRateLimiter driveRateLimiter;
+  private SlewRateLimiter rotationRateLimiter;
+  private SwerveModuleController testModule;
+  private CANCoder testCanCoder; 
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -29,6 +42,13 @@ public class Robot extends TimedRobot {
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
+    controller = new XboxController(0);
+    steerTalon = new WPI_TalonFX(53);
+    driveTalon = new WPI_TalonFX(52);
+    driveRateLimiter = new SlewRateLimiter(3);
+    rotationRateLimiter = new SlewRateLimiter(3);
+    testModule =  new SwerveModuleController(steerTalon, driveTalon);
+    testCanCoder = new CANCoder(40);
   }
 
   /**
@@ -75,10 +95,29 @@ public class Robot extends TimedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {}
-
+  private double angle = 0; 
   /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {}
+  public void teleopPeriodic() {
+    System.out.println("Left Y:" + controller.getLeftY() + " | Right Y: " + controller.getRightY());
+
+    double turnInput = controller.getLeftY();
+    double steerInput = controller.getRightY();
+    if (Math.abs(controller.getLeftY()) < 0.03) turnInput = 0;
+    if (Math.abs(controller.getRightY()) < 0.03) steerInput = 0; 
+    angle += turnInput * 2;
+    // if (angle < 0) angle += 360; 
+   // if (angle > 360) angle -= 360; 
+    // apply the slew rate limiter and account for controller dead zones
+    // double driveSpeed = driveRateLimiter.calculate(MathUtil.applyDeadband(controller.getLeftY(), 0.05));
+    // double rotationSpeed = rotationRateLimiter.calculate(MathUtil.applyDeadband(controller.getRightY(), 0.05));
+    SmartDashboard.putNumber("angle", angle);
+    SmartDashboard.putNumber("detected", testCanCoder.getPosition() % 360);
+    // steerTalon.set(driveSpeed);
+    // driveTalon.set(rotationSpeed);
+    testModule.SetTargetAngleAndSpeed(angle, turnInput, testCanCoder.getPosition() % 360);
+    //testModule.UpdateRotation();
+  }
 
   /** This function is called once when the robot is disabled. */
   @Override
