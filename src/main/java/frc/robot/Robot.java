@@ -39,9 +39,9 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
-    m_chooser.addOption("My Auto", kCustomAuto);
-    SmartDashboard.putData("Auto choices", m_chooser);
+    // m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
+    // m_chooser.addOption("My Auto", kCustomAuto);
+    // SmartDashboard.putData("Auto choices", m_chooser);
     controller = new XboxController(0);
     steerTalon = new WPI_TalonFX(53);
     driveTalon = new WPI_TalonFX(52);
@@ -95,28 +95,30 @@ public class Robot extends TimedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {}
-  private double angle = 0; 
+  private double targetAngle = 0; 
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
     System.out.println("Left Y:" + controller.getLeftY() + " | Right Y: " + controller.getRightY());
 
     double turnInput = controller.getLeftY();
-    double steerInput = controller.getRightY();
+    double driveInput = controller.getRightY();
     if (Math.abs(controller.getLeftY()) < 0.03) turnInput = 0;
-    if (Math.abs(controller.getRightY()) < 0.03) steerInput = 0; 
-    angle += turnInput * 2;
-    // if (angle < 0) angle += 360; 
-   // if (angle > 360) angle -= 360; 
-    // apply the slew rate limiter and account for controller dead zones
+    if (Math.abs(controller.getRightY()) < 0.03) driveInput = 0; 
+    targetAngle += turnInput * 2;
+
+    if (targetAngle > 360) targetAngle -= 360; 
+    if (targetAngle < 0) targetAngle += 360;
+
+    // output is -1 to 1 (steering speed)
+
+    SmartDashboard.putNumber("Target Angle", targetAngle);
+    SmartDashboard.putNumber("Detected Angle", testCanCoder.getAbsolutePosition());
+
+    testModule.SetTargetAngleAndSpeed(targetAngle, driveInput, testCanCoder.getAbsolutePosition());
+
     // double driveSpeed = driveRateLimiter.calculate(MathUtil.applyDeadband(controller.getLeftY(), 0.05));
     // double rotationSpeed = rotationRateLimiter.calculate(MathUtil.applyDeadband(controller.getRightY(), 0.05));
-    SmartDashboard.putNumber("angle", angle);
-    SmartDashboard.putNumber("detected", testCanCoder.getPosition() % 360);
-    // steerTalon.set(driveSpeed);
-    // driveTalon.set(rotationSpeed);
-    testModule.SetTargetAngleAndSpeed(angle, turnInput, testCanCoder.getPosition() % 360);
-    //testModule.UpdateRotation();
   }
 
   /** This function is called once when the robot is disabled. */
