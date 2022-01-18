@@ -101,12 +101,15 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     System.out.println("Left Y:" + controller.getLeftY() + " | Right Y: " + controller.getRightY());
 
-    double turnInput = controller.getLeftY();
-    double driveInput = controller.getRightY();
-    if (Math.abs(controller.getLeftY()) < 0.03) turnInput = 0;
-    if (Math.abs(controller.getRightY()) < 0.03) driveInput = 0; 
-    targetAngle += turnInput * 2;
-
+    double turnInput = controller.getRightY();
+    double driveInput = controller.getLeftY();
+    SmartDashboard.putNumber("turn input raw", turnInput);
+    SmartDashboard.putNumber("drive input raw", driveInput);
+    if (Math.abs(controller.getRightY()) < 0.12) turnInput = 0;
+    if (Math.abs(controller.getLeftY()) < 0.12) driveInput = 0; 
+    targetAngle += turnInput * 4;
+    SmartDashboard.putNumber("turn input", turnInput);
+    SmartDashboard.putNumber("drive input", driveInput);
     if (targetAngle > 360) targetAngle -= 360; 
     if (targetAngle < 0) targetAngle += 360;
 
@@ -116,7 +119,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Detected Angle", testCanCoder.getAbsolutePosition());
 
     testModule.SetTargetAngleAndSpeed(targetAngle, driveInput, testCanCoder.getAbsolutePosition());
-
+    System.out.println("Set angle and speed");
     // double driveSpeed = driveRateLimiter.calculate(MathUtil.applyDeadband(controller.getLeftY(), 0.05));
     // double rotationSpeed = rotationRateLimiter.calculate(MathUtil.applyDeadband(controller.getRightY(), 0.05));
   }
