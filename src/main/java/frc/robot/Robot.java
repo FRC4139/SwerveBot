@@ -9,8 +9,14 @@ import com.ctre.phoenix.sensors.CANCoder;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.interfaces.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -24,6 +30,17 @@ public class Robot extends TimedRobot {
   private static final String kDefaultAuto = "Default";
   private static final String kCustomAuto = "My Auto";
   private static final double normalization = 0.5;
+
+  private static final double wheelBase = 0.0; // distance between centers of wheels on the same side
+  private static final double trackWidth = 0.0; // distance between centers of wheels on opposite sides
+  private static final Translation2d locationFL = new Translation2d(wheelBase / 2, trackWidth / 2);
+  private static final Translation2d locationFR = new Translation2d(wheelBase / 2, -trackWidth / 2);
+  private static final Translation2d locationBL = new Translation2d(-wheelBase / 2, trackWidth / 2);
+  private static final Translation2d locationBR = new Translation2d(-wheelBase / 2, -trackWidth / 2);
+
+  private static final boolean FIELD_RELATIVE = false;
+  private static final double PROPORTION_SPEED_CONSTANT = 0.1;
+
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
@@ -31,8 +48,15 @@ public class Robot extends TimedRobot {
   private WPI_TalonFX steerTalon, driveTalon;
   private SlewRateLimiter driveRateLimiter;
   private SlewRateLimiter rotationRateLimiter;
-  private SwerveModuleController testModule;
-  private CANCoder testCanCoder; 
+  //private SwerveModuleController testModule;
+  private SwerveModuleController moduleFL, moduleFR, moduleBL, moduleBR;
+  // private CANCoder testCanCoder; 
+  private CANCoder canCoderFL, canCoderFR, canCoderBL, canCoderBR;
+
+  private SwerveDriveKinematics kinematics;
+  private SwerveDriveOdometry odometry;
+  private Gyro gyro; // NEED GYRO
+
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -47,8 +71,21 @@ public class Robot extends TimedRobot {
     driveTalon = new WPI_TalonFX(52);
     driveRateLimiter = new SlewRateLimiter(3);
     rotationRateLimiter = new SlewRateLimiter(3);
-    testModule =  new SwerveModuleController(steerTalon, driveTalon);
-    testCanCoder = new CANCoder(40);
+    // testModule =  new SwerveModuleController(steerTalon, driveTalon);
+    moduleFL = new SwerveModuleController(new WPI_TalonFX(53), new WPI_TalonFX(52));
+    moduleFR = new SwerveModuleController(new WPI_TalonFX(55), new WPI_TalonFX(54));
+    moduleBL = new SwerveModuleController(new WPI_TalonFX(57), new WPI_TalonFX(56));
+    moduleBR = new SwerveModuleController(new WPI_TalonFX(59), new WPI_TalonFX(58));
+    // testCanCoder = new CANCoder(40);
+    canCoderFL = new CANCoder(40);
+    canCoderFR = new CANCoder(41);
+    canCoderBL = new CANCoder(42);
+    canCoderBR = new CANCoder(43);
+
+    // TODO: gyro
+
+    kinematics = new SwerveDriveKinematics(locationFL, locationFR, locationBL, locationBR);
+    odometry = new SwerveDriveOdometry(kinematics, gyro.getRotation2d());
   }
 
   /**
@@ -116,12 +153,26 @@ public class Robot extends TimedRobot {
     // output is -1 to 1 (steering speed)
 
     SmartDashboard.putNumber("Target Angle", targetAngle);
-    SmartDashboard.putNumber("Detected Angle", testCanCoder.getAbsolutePosition());
+    //SmartDashboard.putNumber("Detected Angle", testCanCoder.getAbsolutePosition());
 
-    testModule.SetTargetAngleAndSpeed(targetAngle, driveInput, testCanCoder.getAbsolutePosition());
+    //testModule.SetTargetAngleAndSpeed(targetAngle, driveInput, testCanCoder.getAbsolutePosition());
     System.out.println("Set angle and speed");
     // double driveSpeed = driveRateLimiter.calculate(MathUtil.applyDeadband(controller.getLeftY(), 0.05));
     // double rotationSpeed = rotationRateLimiter.calculate(MathUtil.applyDeadband(controller.getRightY(), 0.05));
+
+
+    double forward = -MathUtil.applyDeadband(controller.getLeftY(), 0.12);
+    double strafe = -MathUtil.applyDeadband(controller.getLeftX(), 0.12);
+    double rotation = -MathUtil.applyDeadband(controller.getRightX(), 0.12);
+
+    // falcon 500 w/ talon fx max speed: 6380 RPM
+    ChassisSpeeds speeds = new ChassisSpeeds(forward, strafe, rotation);
+    SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
+    System.out.println("speed: " + states[0].speedMetersPerSecond);
+    //moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond, canCoderFL.getAbsolutePosition());
+    //moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond, canCoderFR.getAbsolutePosition());
+    //moduleFL.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond, canCoderBL.getAbsolutePosition());
+    //moduleFL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond, canCoderBR.getAbsolutePosition());
   }
 
   /** This function is called once when the robot is disabled. */
