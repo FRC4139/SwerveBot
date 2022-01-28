@@ -39,7 +39,7 @@ public class Robot extends TimedRobot {
   private static final Translation2d locationBR = new Translation2d(-wheelBase / 2, -trackWidth / 2);
 
   private static final boolean FIELD_RELATIVE = false;
-  private static final double PROPORTION_SPEED_CONSTANT = 0.1;
+  private static final double MAX_SPEED_MS = 5.4864;
 
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
@@ -166,9 +166,10 @@ public class Robot extends TimedRobot {
     double rotation = -MathUtil.applyDeadband(controller.getRightX(), 0.12);
 
     // falcon 500 w/ talon fx max speed: 6380 RPM
-    ChassisSpeeds speeds = new ChassisSpeeds(forward, strafe, rotation);
+    ChassisSpeeds speeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe, rotation);
     SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
-    System.out.println("speed: " + states[0].speedMetersPerSecond);
+    SmartDashboard.putNumber("Speed", states[0].speedMetersPerSecond);
+    SmartDashboard.putNumber("Angle", states[0].angle.getDegrees());
     //moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond, canCoderFL.getAbsolutePosition());
     //moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond, canCoderFR.getAbsolutePosition());
     //moduleFL.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond, canCoderBL.getAbsolutePosition());
