@@ -8,18 +8,25 @@ public class SwerveModuleController {
 
     private double targetAngle; // 0 - 360
     private double rotationSpeed, driveSpeed; 
-
-    private static final float PROPORTION_ROTATION_CONSTANT = 0.004f; 
+    private double offset = 0; 
+    private static final float PROPORTION_ROTATION_CONSTANT = 0.0020f; 
 
     public SwerveModuleController(WPI_TalonFX steer, WPI_TalonFX drive) { 
         steerFalcon = steer;
         driveFalcon = drive; 
     }
-
+    public SwerveModuleController(WPI_TalonFX steer, WPI_TalonFX drive, double Ioffset) { 
+        steerFalcon = steer;
+        driveFalcon = drive; 
+        offset = Ioffset; 
+    }
+    public void SetOffset(double newOffset) {
+        offset = newOffset;
+    }
     public void SetTargetAngleAndSpeed(double angle, double speed, double currentAngle) { 
         targetAngle = angle;
         driveSpeed = speed; 
-        
+        currentAngle += offset; 
         //steerFalcon.set(rotationSpeed);
         driveFalcon.set(driveSpeed);
         
@@ -36,9 +43,9 @@ public class SwerveModuleController {
 
         
         if (rotationSpeed > 0) {
-            steerFalcon.set(rotationSpeed * PROPORTION_ROTATION_CONSTANT + 0.05);
+            steerFalcon.set(rotationSpeed * PROPORTION_ROTATION_CONSTANT + 0.1);
         } else {
-            steerFalcon.set(rotationSpeed * PROPORTION_ROTATION_CONSTANT - 0.05);
+            steerFalcon.set(rotationSpeed * PROPORTION_ROTATION_CONSTANT - 0.01);
         }
         
         SmartDashboard.putNumber("rotationSpeed", rotationSpeed * PROPORTION_ROTATION_CONSTANT);
