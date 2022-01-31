@@ -195,8 +195,9 @@ public class Robot extends TimedRobot {
     }
 
     // falcon 500 w/ talon fx max speed: 6380 RPM
-    ChassisSpeeds speeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
-    SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
+    // ChassisSpeeds speeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
+    ChassisSpeeds frSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation, ahrs.getRotation2d());
+    SwerveModuleState states[] = kinematics.toSwerveModuleStates(frSpeeds);
     SmartDashboard.putNumber("Speed", states[0].speedMetersPerSecond);
     SmartDashboard.putNumber("Angle", states[0].angle.getDegrees());
     //var gyroAngle = Rotation2d.fromDegrees(ahrs.getAngle());
