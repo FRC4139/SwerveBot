@@ -90,6 +90,7 @@ public class Robot extends TimedRobot {
 
     // gyro
     ahrs = new AHRS(SPI.Port.kMXP);
+    ahrs.calibrate();
 
     kinematics = new SwerveDriveKinematics(locationFL, locationFR, locationBL, locationBR);
     odometry = new SwerveDriveOdometry(kinematics, ahrs.getRotation2d());
