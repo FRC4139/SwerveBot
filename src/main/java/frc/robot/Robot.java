@@ -4,6 +4,8 @@
 
 package frc.robot;
 
+import java.util.ArrayList;
+
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import com.ctre.phoenix.sensors.CANCoder;
 import com.kauailabs.navx.frc.AHRS;
@@ -22,6 +24,10 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.interfaces.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import io.github.pseudoresonance.pixy2api.Pixy2;
+import io.github.pseudoresonance.pixy2api.Pixy2CCC;
+import io.github.pseudoresonance.pixy2api.Pixy2CCC.Block;
+import io.github.pseudoresonance.pixy2api.links.SPILink;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -63,6 +69,7 @@ public class Robot extends TimedRobot {
   // CALIBRATION CODE
   private int selectedModule; 
   private SwerveModuleController[] modules; 
+  private Pixy2 pixy; 
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -90,6 +97,7 @@ public class Robot extends TimedRobot {
 
     // gyro
     ahrs = new AHRS(SPI.Port.kMXP);
+    ahrs.calibrate();
 
     kinematics = new SwerveDriveKinematics(locationFL, locationFR, locationBL, locationBR);
     odometry = new SwerveDriveOdometry(kinematics, ahrs.getRotation2d());
@@ -99,6 +107,10 @@ public class Robot extends TimedRobot {
     moduleBL.SetOffset(offsets[2]);
     moduleBR.SetOffset(offsets[3]);
     modules = new SwerveModuleController[]{moduleFL, moduleFR, moduleBL, moduleBR};
+    pixy = Pixy2.createInstance(new SPILink()); // Creates a new Pixy2 camera using SPILink
+		pixy.init(); // Initializes the camera and prepares to send/receive data
+		pixy.setLamp((byte) 0, (byte) 0); // Turns the LEDs on
+		//pixy.setLED(255, 0, 255); // Sets the RGB LED to full white
   }
 
   /**
@@ -109,7 +121,10 @@ public class Robot extends TimedRobot {
    * SmartDashboard integrated updating.
    */
   @Override
-  public void robotPeriodic() {}
+  public void robotPeriodic() {
+    //pixy.setLED(0, 255, 0); // green
+    getBiggestBlock();
+  }
 
   /**
    * This autonomous (along with the chooser code above) shows how to select between different
@@ -162,6 +177,9 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("drive input", driveInput);
     if (targetAngle > 360) targetAngle -= 360; 
     if (targetAngle < 0) targetAngle += 360;
+
+    if(controller.getStartButtonPressed()) ahrs.calibrate();
+    while(ahrs.isCalibrating()) {} // don't continue until calibrated
     
     if (controller.getYButtonPressed()) selectedModule++;
     if (controller.getAButtonPressed()) selectedModule--;
@@ -196,6 +214,7 @@ public class Robot extends TimedRobot {
 
     // falcon 500 w/ talon fx max speed: 6380 RPM
     // ChassisSpeeds speeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
+    SmartDashboard.putNumber("Gyro", ahrs.getRotation2d().getDegrees());
     ChassisSpeeds frSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation, ahrs.getRotation2d());
     SwerveModuleState states[] = kinematics.toSwerveModuleStates(frSpeeds);
     SmartDashboard.putNumber("Speed", states[0].speedMetersPerSecond);
@@ -223,4 +242,29 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {}
+
+  public Block getBiggestBlock() {
+		// Gets the number of "blocks", identified targets, that match signature 1 on the Pixy2,
+		// does not wait for new data if none is available,
+		// and limits the number of returned blocks to 25, for a slight increase in efficiency
+		int blockCount = pixy.getCCC().getBlocks(false, Pixy2CCC.CCC_SIG1, 25);
+		if (blockCount != 0) System.out.println("Found " + blockCount + " blocks!"); // Reports number of blocks found
+		SmartDashboard.putNumber("number of blocks", blockCount);
+    if (blockCount <= 0) {
+			return null; // If blocks were not found, stop processing
+		}
+    
+		ArrayList<Block> blocks = pixy.getCCC().getBlockCache(); // Gets a list of all blocks found by the Pixy2
+		SmartDashboard.putNumber("x", blocks.get(0).getX());
+    SmartDashboard.putNumber("y", blocks.get(0).getY());
+    Block largestBlock = null;
+		for (Block block : blocks) { // Loops through all blocks and finds the widest one
+			if (largestBlock == null) {
+				largestBlock = block;
+			} else if (block.getWidth() > largestBlock.getWidth()) {
+				largestBlock = block;
+			}
+		}
+		return largestBlock;
+	}
 }
