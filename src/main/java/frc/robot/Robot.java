@@ -18,16 +18,15 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.interfaces.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import io.github.pseudoresonance.pixy2api.Pixy2;
-import io.github.pseudoresonance.pixy2api.Pixy2CCC;
-import io.github.pseudoresonance.pixy2api.Pixy2CCC.Block;
-import io.github.pseudoresonance.pixy2api.links.SPILink;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -69,7 +68,12 @@ public class Robot extends TimedRobot {
   // CALIBRATION CODE
   private int selectedModule; 
   private SwerveModuleController[] modules; 
-  private Pixy2 pixy; 
+
+  private NetworkTable limelightTable;
+  private NetworkTableEntry tx; // horizontal offset from crosshair to target (-27deg to 27deg)
+  private NetworkTableEntry ty; // vertical offset from crosshair to target (-20.5deg to 20.5deg)
+  private NetworkTableEntry ta; // target area of image (0% of image to 100% of image)
+
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -107,10 +111,14 @@ public class Robot extends TimedRobot {
     moduleBL.SetOffset(offsets[2]);
     moduleBR.SetOffset(offsets[3]);
     modules = new SwerveModuleController[]{moduleFL, moduleFR, moduleBL, moduleBR};
-    pixy = Pixy2.createInstance(new SPILink()); // Creates a new Pixy2 camera using SPILink
-		pixy.init(); // Initializes the camera and prepares to send/receive data
-		pixy.setLamp((byte) 0, (byte) 0); // Turns the LEDs on
-		//pixy.setLED(255, 0, 255); // Sets the RGB LED to full white
+
+    limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
+    tx = limelightTable.getEntry("tx");
+    ty = limelightTable.getEntry("ty");
+    ta = limelightTable.getEntry("ta");
+
+    limelightTable.getEntry("ledMode").setNumber(3); // always on
+    limelightTable.getEntry("camMode").setNumber(0); // vision processor (not driver camera)
   }
 
   /**
@@ -122,8 +130,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    //pixy.setLED(0, 255, 0); // green
-    getBiggestBlock();
+
   }
 
   /**
@@ -199,6 +206,9 @@ public class Robot extends TimedRobot {
     // double driveSpeed = driveRateLimiter.calculate(MathUtil.applyDeadband(controller.getLeftY(), 0.05));
     // double rotationSpeed = rotationRateLimiter.calculate(MathUtil.applyDeadband(controller.getRightY(), 0.05));
 
+    SmartDashboard.putNumber("Limelight X", tx.getDouble(0.0));
+    SmartDashboard.putNumber("Limelight Y", ty.getDouble(0.0));
+    SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
 
     double forward = driveRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftY(), 0.12));
     double strafe = rotationRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftX(), 0.12));
@@ -242,29 +252,4 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {}
-
-  public Block getBiggestBlock() {
-		// Gets the number of "blocks", identified targets, that match signature 1 on the Pixy2,
-		// does not wait for new data if none is available,
-		// and limits the number of returned blocks to 25, for a slight increase in efficiency
-		int blockCount = pixy.getCCC().getBlocks(false, Pixy2CCC.CCC_SIG1, 25);
-		if (blockCount != 0) System.out.println("Found " + blockCount + " blocks!"); // Reports number of blocks found
-		SmartDashboard.putNumber("number of blocks", blockCount);
-    if (blockCount <= 0) {
-			return null; // If blocks were not found, stop processing
-		}
-    
-		ArrayList<Block> blocks = pixy.getCCC().getBlockCache(); // Gets a list of all blocks found by the Pixy2
-		SmartDashboard.putNumber("x", blocks.get(0).getX());
-    SmartDashboard.putNumber("y", blocks.get(0).getY());
-    Block largestBlock = null;
-		for (Block block : blocks) { // Loops through all blocks and finds the widest one
-			if (largestBlock == null) {
-				largestBlock = block;
-			} else if (block.getWidth() > largestBlock.getWidth()) {
-				largestBlock = block;
-			}
-		}
-		return largestBlock;
-	}
 }
