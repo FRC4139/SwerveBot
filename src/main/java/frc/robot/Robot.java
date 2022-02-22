@@ -21,12 +21,14 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.interfaces.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.util.WPILibVersion;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -35,8 +37,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  * project.
  */
 public class Robot extends TimedRobot {
-  private static final String kDefaultAuto = "Default";
-  private static final String kCustomAuto = "My Auto";
   private static final double normalization = 0.5;
 
   private static final double wheelBase = 0.63; // distance between centers of wheels on the same side
@@ -46,15 +46,14 @@ public class Robot extends TimedRobot {
   private static final Translation2d locationBL = new Translation2d(-wheelBase / 2, trackWidth / 2);
   private static final Translation2d locationBR = new Translation2d(-wheelBase / 2, -trackWidth / 2);
 
-  private static final boolean FIELD_RELATIVE = false;
-  //private static final double MAX_SPEED_MS = 5.4864;
-  private static final double MAX_SPEED_MS = 2.0; // placeholder
+  private static final double MAX_SPEED_MS = 0;
+  //private static final double MAX_SPEED_MS = 2.0; // placeholder
 
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
   private XboxController controller;
-  private WPI_TalonFX steerTalon, driveTalon;
+  private WPI_TalonFX turretTalon, shootTalon, magazineTalon; 
   private SlewRateLimiter driveRateLimiter;
   private SlewRateLimiter rotationRateLimiter;
   //private SwerveModuleController testModule;
@@ -67,13 +66,17 @@ public class Robot extends TimedRobot {
   private AHRS ahrs; //gyro
   // CALIBRATION CODE
   private int selectedModule; 
-  private SwerveModuleController[] modules; 
-
+  private SwerveModuleController[] modules;
   private NetworkTable limelightTable;
   private NetworkTableEntry tx; // horizontal offset from crosshair to target (-27deg to 27deg)
   private NetworkTableEntry ty; // vertical offset from crosshair to target (-20.5deg to 20.5deg)
   private NetworkTableEntry ta; // target area of image (0% of image to 100% of image)
 
+  //limit switches
+  private DigitalInput toplimitSwitch;
+  private DigitalInput bottomlimitSwitch;
+
+  private WPI_TalonFX testTalonFX;
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -84,8 +87,12 @@ public class Robot extends TimedRobot {
     // m_chooser.addOption("My Auto", kCustomAuto);
     // SmartDashboard.putData("Auto choices", m_chooser);
     controller = new XboxController(0);
-    steerTalon = new WPI_TalonFX(53);
-    driveTalon = new WPI_TalonFX(52);
+    shootTalon = new WPI_TalonFX(34);
+    turretTalon = new WPI_TalonFX(35);
+    magazineTalon = new WPI_TalonFX(33);
+    testTalonFX = new WPI_TalonFX(36);
+    //shootTalon = new WPI_TalonFX(32);
+    toplimitSwitch = new DigitalInput(0);
     driveRateLimiter = new SlewRateLimiter(3);
     rotationRateLimiter = new SlewRateLimiter(3);
     // testModule =  new SwerveModuleController(steerTalon, driveTalon);
@@ -153,6 +160,7 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
+    /*
     switch (m_autoSelected) {
       case kCustomAuto:
         // Put custom auto code here
@@ -162,6 +170,24 @@ public class Robot extends TimedRobot {
         // Put default auto code here
         break;
     }
+    */
+
+    double limeX = tx.getDouble(0.0);
+    double limeY = ty.getDouble(0.0);
+    double limeArea = ta.getDouble(0.0);
+
+    if(limeArea > 15) {
+      ChassisSpeeds speeds = new ChassisSpeeds(0, 0, limeX < 0 ? -(Math.PI / 12) : (Math.PI / 12));
+      SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
+      moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond, canCoderFL.getAbsolutePosition());
+      moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond, canCoderFR.getAbsolutePosition());
+      moduleBL.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond, canCoderBL.getAbsolutePosition());
+      moduleBR.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond, canCoderBR.getAbsolutePosition());
+    }
+
+    SmartDashboard.putNumber("Limelight X", tx.getDouble(0.0));
+    SmartDashboard.putNumber("Limelight Y", ty.getDouble(0.0));
+    SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
   }
 
   /** This function is called once when teleop is enabled. */
@@ -199,16 +225,13 @@ public class Robot extends TimedRobot {
     // output is -1 to 1 (steering speed)
 
     SmartDashboard.putNumber("Target Angle", targetAngle);
+    //shootTalon.set(-1 * controller.getRightTriggerAxis());
     //SmartDashboard.putNumber("Detected Angle", testCanCoder.getAbsolutePosition());
 
     //testModule.SetTargetAngleAndSpeed(targetAngle, driveInput, testCanCoder.getAbsolutePosition());
     //System.out.println("Set angle and speed");
     // double driveSpeed = driveRateLimiter.calculate(MathUtil.applyDeadband(controller.getLeftY(), 0.05));
     // double rotationSpeed = rotationRateLimiter.calculate(MathUtil.applyDeadband(controller.getRightY(), 0.05));
-
-    SmartDashboard.putNumber("Limelight X", tx.getDouble(0.0));
-    SmartDashboard.putNumber("Limelight Y", ty.getDouble(0.0));
-    SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
 
     double forward = driveRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftY(), 0.12));
     double strafe = rotationRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftX(), 0.12));
@@ -250,6 +273,39 @@ public class Robot extends TimedRobot {
   public void testInit() {}
 
   /** This function is called periodically during test mode. */
+  
   @Override
-  public void testPeriodic() {}
+  public void testPeriodic() {
+    // code for turret and shooter 
+    //SmartDashboard.putBoolean("Top Limit Switch", toplimitSwitch.get());
+    //limit switches when turret talon reaches limit, then it stops. 
+    // if(toplimitSwitch.get()) {
+    //     turretTalon.set(0);
+    // }
+    // else {
+    //   //continue
+    // }
+
+    //controlling 3 falcon
+    /*
+    shootTalon = new WPI_TalonFX(34);
+    turretTalon = new WPI_TalonFX(35);
+    magazineTalon = new WPI_TalonFX(33);
+    */
+
+    shootTalon.set(controller.getLeftY());
+    //magazineTalon.set(controller.getRightTriggerAxis());
+    magazineTalon.set(controller.getRightY());
+    //turretTalon.set(controller.getRightY());
+    // if(controller.getLeftStickButton()) { //controlls shootTalon(34)
+      
+    // }
+
+    // if(controller.getRightStickButton()) { //controlls turretTalon(35)
+
+    // }
+
+    
+      //testTalonFX.set(controller.getLeftY());
+  }
 }
