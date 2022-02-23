@@ -47,6 +47,7 @@ public class Parallax {
      * @param tx Horizontal offset from crosshair to target
      * @param ty Vertical offset from crosshair to target
      * @param getDirectDistance If true, calculate the Euclidean distance (Straight-line distance, vertical included). If false, calculate horizontal distance (no vertical).
+     * Formula for Euclidean distance: (HEIGHT_DIFF / tan(ty)) * norm([tan(tx),tan(ty),1])
      * @return Desired form of distance
      */
     public static double getDistanceToTarget(double tx, double ty, boolean getDirectDistance){
@@ -60,7 +61,14 @@ public class Parallax {
         }
         return distance;
     }
-
+    public static double getDistanceToTarget(double tx, double ty, double cameraInclination){
+        double tyCorrected = ty + cameraInclination;
+        return getDistanceToTarget(tx, tyCorrected);
+    }
+    public static double getDistanceToTarget(double tx, double ty, double cameraInclination, boolean getDirectDistance){
+        double tyCorrected = ty + cameraInclination;
+        return getDistanceToTarget(tx, tyCorrected, getDirectDistance);
+    }
 
     
 }
