@@ -3,6 +3,7 @@ package frc.robot;
 public class Parallax {
     public static double LIMELIGHT_HEIGHT = 2.8; //feet
     public static double TAPE_HEIGHT = 8.0; //feet
+    public static double HEIGHT_DIFF = TAPE_HEIGHT - LIMELIGHT_HEIGHT; //feet
     /**
      * Returns horizontal distance from limelight to basket using parallax. Requires tx and ty from two viewpoints.
      * @param dx Change in translational distance
@@ -30,7 +31,7 @@ public class Parallax {
     }
     /**
      * Returns the horizontal distance from limelight to basket using known heights of limelight and basket.
-     * Formula: (TAPE_HEIGHT - LIMELIGHT_HEIGHT) * cotan(ty)
+     * Formula: HEIGHT_DIFF / (tan(ty) * cos(tx))
      * @param tx Horizontal offset from crosshair to target
      * @param ty Vertical offset from crosshair to target
      * @return The horizontal distance from limelight to basket (no vertical)
@@ -38,8 +39,7 @@ public class Parallax {
     public static double getDistanceToTarget(double tx, double ty){
         //Returns horizontal distance from limelight to basket using known height of basket
         double distance;
-        double distanceLeg = (TAPE_HEIGHT - LIMELIGHT_HEIGHT) / Math.tan(ty);
-        distance = distanceLeg / Math.cos(tx);
+        distance = HEIGHT_DIFF / Math.tan(ty) / Math.cos(tx);
         return distance;
     }
     /**
@@ -53,8 +53,7 @@ public class Parallax {
         //if getDirectDistance is true, return the Euclidean distance from limelight to basket (straight line distance, vertical distance is included)
         double distance;
         if(getDirectDistance){
-            double horizontalDistance = getDistanceToTarget(tx,ty);
-            distance = horizontalDistance / Math.sin(ty);
+            distance = HEIGHT_DIFF / Math.tan(ty) * Math.sqrt(Math.pow(Math.tan(tx),2) + Math.pow(Math.tan(ty),2) + 1);
         }
         else{
             distance = getDistanceToTarget(tx,ty);

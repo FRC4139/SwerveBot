@@ -8,6 +8,7 @@ import java.util.ArrayList;
 
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import com.ctre.phoenix.sensors.CANCoder;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator.Builder;
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.math.MathUtil;
@@ -23,6 +24,7 @@ import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.SPI;
+import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.interfaces.Gyro;
@@ -75,6 +77,9 @@ public class Robot extends TimedRobot {
   //limit switches
   private DigitalInput toplimitSwitch;
   private DigitalInput bottomlimitSwitch;
+
+  //Servo
+  Servo exampleServo = new Servo(0);
 
   private WPI_TalonFX testTalonFX;
   /**
@@ -285,6 +290,15 @@ public class Robot extends TimedRobot {
     // else {
     //   //continue
     // }
+    
+    //SendableBuilder Builder = new SendableBuilder();
+    //exampleServo.initSendable(SendableBuilder Builder);
+    if(controller.getYButton()){
+      exampleServo.setAngle(165);
+    }
+    else{
+      exampleServo.setAngle(70);
+    }
 
     //controlling 3 falcon
     /*
@@ -293,9 +307,9 @@ public class Robot extends TimedRobot {
     magazineTalon = new WPI_TalonFX(33);
     */
 
-    shootTalon.set(controller.getLeftY());
+    //shootTalon.set(controller.getLeftY());
     //magazineTalon.set(controller.getRightTriggerAxis());
-    magazineTalon.set(controller.getRightY());
+    //magazineTalon.set(controller.getRightY());
     //turretTalon.set(controller.getRightY());
     // if(controller.getLeftStickButton()) { //controlls shootTalon(34)
       
