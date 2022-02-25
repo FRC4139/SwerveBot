@@ -4,6 +4,7 @@ public class Parallax {
     public static double LIMELIGHT_HEIGHT = 2.8; //feet
     public static double TAPE_HEIGHT = 8.0; //feet
     public static double HEIGHT_DIFF = TAPE_HEIGHT - LIMELIGHT_HEIGHT; //feet
+    public static double DEFAULT_THRESHOLD = 0.1; //feet
     /**
      * Returns horizontal distance from limelight to basket using parallax. Requires tx and ty from two viewpoints.
      * @param dx Change in translational distance
@@ -75,9 +76,6 @@ public class Parallax {
         return getDistanceToTarget(tx, tyCorrected, getDirectDistance);
     }
     public static boolean checkValidVectors(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double threshold){
-        if (threshold <= 0){
-            threshold = 1.0;
-        }
         double dxCalculated = dz * (Math.tan(ty2)*Math.tan(tx1) - Math.tan(ty1)*Math.tan(tx2))/(Math.tan(ty2) - Math.tan(ty1));
         
         if (Math.abs(dx - dxCalculated) <= threshold){
@@ -87,5 +85,31 @@ public class Parallax {
             return false;
         }
     }
-    
+    public static boolean checkValidVectors(double tx1, double ty1, double tx2, double ty2, double dx, double dz){
+        return checkValidVectors(tx1,ty1,tx2,ty2,dx,dz,DEFAULT_THRESHOLD);
+    }
+    /**
+     * Returns the distance if monocular and binocular distance measures agree (within threshold), and returns -1.0 if measures don't agree.
+     * @param tx1
+     * @param ty1
+     * @param tx2
+     * @param ty2
+     * @param dx
+     * @param dz
+     * @param threshold
+     * @return
+     */
+    public static double getAgreedDistance(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double threshold){
+        double binocularDistance = getDistanceToTarget(tx1,ty1,tx2,ty2,dx,dz);
+        double monocularDistance = getDistanceToTarget(tx2,ty2);
+        if(Math.abs(binocularDistance - monocularDistance) <= threshold){
+            return (binocularDistance + monocularDistance) / 2;
+        }
+        else{
+            return -1.0;
+        }
+    }
+    public static double getAgreedDistance(double tx1, double ty1, double tx2, double ty2, double dx, double dz){
+        return getAgreedDistance(tx1,ty1,tx2,ty2,dx,dz,DEFAULT_THRESHOLD);
+    }
 }
