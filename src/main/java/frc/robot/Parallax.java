@@ -74,6 +74,18 @@ public class Parallax {
         double tyCorrected = ty + cameraInclination;
         return getDistanceToTarget(tx, tyCorrected, getDirectDistance);
     }
-
+    public static boolean checkValidVectors(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double threshold){
+        if (threshold <= 0){
+            threshold = 1.0;
+        }
+        double dxCalculated = dz * (Math.tan(ty2)*Math.tan(tx1) - Math.tan(ty1)*Math.tan(tx2))/(Math.tan(ty2) - Math.tan(ty1));
+        
+        if (Math.abs(dx - dxCalculated) <= threshold){
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
     
 }
