@@ -13,21 +13,26 @@ public class Parallax {
      * @param ty2 Vertical offset from crosshair to target at viewpoint 2
      * @return
      */
-    public static double getDistanceToTarget(double dx, double tx1, double ty1, double tx2, double ty2){
+    public static double getDistanceToTarget(double tx1, double ty1, double tx2, double ty2, double dx, double dz){
         //Returns horizontal distance from lightlight to basket using parallax
         double distance;
 
-        double altitude = Math.abs(dx) / (Math.abs(Math.tan(tx1)) + Math.abs(Math.tan(tx2)));
-        distance = altitude / Math.cos(tx2);
+
+        double k = dz / (Math.tan(ty2) / Math.tan(ty1) - 1);
+        distance = k / Math.cos(tx2);
         return distance;
     }
-    public static double getDistanceToTarget(double dx, double tx1, double ty1, double tx2, double ty2, boolean getDirectDistance){
+    public static double getDistanceToTarget(double tx1, double ty1, double tx2, double ty2, double dx, double dz, boolean getDirectDistance){
         //if getDirectDistance is true, returns Euclidean distance using parallax
         double distance;
         if(getDirectDistance){
-            return 1.0;
+            double k = dz / (Math.tan(ty2) / Math.tan(ty1) - 1);
+            distance = k * Math.sqrt(Math.pow(Math.tan(tx2),2) + Math.pow(Math.tan(ty2),2) + 1);
+            return distance;
         }
-        return 1.0;
+        else{
+            return getDistanceToTarget(tx1, ty1, tx2, ty2, dx, dz);
+        }
     }
     /**
      * Returns the horizontal distance from limelight to basket using known heights of limelight and basket.

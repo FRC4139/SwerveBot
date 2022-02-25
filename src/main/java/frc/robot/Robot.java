@@ -293,13 +293,13 @@ public class Robot extends TimedRobot {
     
     //SendableBuilder Builder = new SendableBuilder();
     //exampleServo.initSendable(SendableBuilder Builder);
-    if(controller.getYButton()){
-      exampleServo.setAngle(165);
-    }
-    else{
-      exampleServo.setAngle(70);
-    }
-
+    // if(controller.getYButton()){
+    //   exampleServo.setAngle(165);
+    // }
+    // else{
+    //   exampleServo.setAngle(70);
+    // }
+    testTalonFX.set(controller.getLeftY());
     //controlling 3 falcon
     /*
     shootTalon = new WPI_TalonFX(34);
