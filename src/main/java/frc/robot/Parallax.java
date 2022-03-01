@@ -42,9 +42,14 @@ public class Parallax {
      */
     public static double getDistanceToTarget(double tx, double ty){
         //Returns horizontal distance from limelight to basket using known height of basket
+        return getDistanceToTarget(tx,ty,CAMERA_PITCH);
+    }
+
+    public static double getDistanceToTarget(double tx, double ty, double cameraPitch){
         double distance;
-        double correctedTy = ty + CAMERA_PITCH;
-        distance = HEIGHT_DIFF / Math.tan(correctedTy) / Math.cos(tx);
+        double calculatedZComponent = (Math.tan(ty)*Math.sin(cameraPitch)*HEIGHT_DIFF + HEIGHT_DIFF*Math.cos(cameraPitch))/(Math.sin(CAMERA_PITCH)-Math.tan(ty)*Math.cos(CAMERA_PITCH));
+        double calculatedXComponent = Math.tan(tx)*(HEIGHT_DIFF*Math.sin(cameraPitch)+calculatedZComponent*Math.cos(cameraPitch));
+        distance = Math.sqrt(Math.pow(calculatedXComponent,2)+Math.pow(calculatedZComponent,2));
         return distance;
     }
     
