@@ -1,11 +1,11 @@
 package frc.robot;
 
 public class Parallax {
-    public static double LIMELIGHT_HEIGHT = 2.8; //feet
+    public static double LIMELIGHT_HEIGHT = 2.6667; //feet
     public static double TAPE_HEIGHT = 8.0; //feet
     public static double HEIGHT_DIFF = TAPE_HEIGHT - LIMELIGHT_HEIGHT; //feet
     public static double DEFAULT_THRESHOLD = 0.1; //feet
-    public static double CAMERA_PITCH = 0.0; //radians
+    public static double CAMERA_PITCH = 0.436332; //radians
     /**
      * Returns horizontal distance from limelight to basket using parallax. Requires tx and ty from two viewpoints.
      * @param dx Change in translational distance

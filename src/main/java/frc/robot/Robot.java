@@ -177,6 +177,7 @@ public class Robot extends TimedRobot {
     }
     */
 
+    
     double limeX = tx.getDouble(0.0);
     double limeY = ty.getDouble(0.0);
     double limeArea = ta.getDouble(0.0);
@@ -193,6 +194,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Limelight X", tx.getDouble(0.0));
     SmartDashboard.putNumber("Limelight Y", ty.getDouble(0.0));
     SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
+    SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(limeX),Math.toRadians(limeY)));
   }
 
   /** This function is called once when teleop is enabled. */
