@@ -33,26 +33,30 @@ public class Parallax {
         return getDistanceToTarget(tx1, ty1, correctedTx, ty2, dx, dz);
     }
     
-    /**
-     * Returns the horizontal distance from limelight to basket using known heights of limelight and basket.
-     * Formula: HEIGHT_DIFF / (tan(ty) * cos(tx))
-     * @param tx Horizontal offset from crosshair to target
-     * @param ty Vertical offset from crosshair to target
-     * @return The horizontal distance from limelight to basket (no vertical)
-     */
-    public static double getDistanceToTarget(double tx, double ty){
-        //Returns horizontal distance from limelight to basket using known height of basket
-        return getDistanceToTarget(tx,ty,CAMERA_PITCH);
-    }
 
-    public static double getDistanceToTarget(double tx, double ty, double cameraPitch){
-        double distance;
-        double calculatedZComponent = (Math.tan(ty)*Math.sin(cameraPitch)*HEIGHT_DIFF + HEIGHT_DIFF*Math.cos(cameraPitch))/(Math.sin(cameraPitch)-Math.tan(ty)*Math.cos(cameraPitch));
-        double calculatedXComponent = Math.tan(tx)*(HEIGHT_DIFF*Math.sin(cameraPitch)+calculatedZComponent*Math.cos(cameraPitch));
-        distance = Math.sqrt(Math.pow(calculatedXComponent,2)+Math.pow(calculatedZComponent,2));
-        return distance;
+
+    public static double getDistanceToTarget(double tx, double ty, double yaw, double pitch){
+        double[] calculatedVector = getVectorToTarget(tx, ty, yaw, pitch);
+        double x = calculatedVector[0];
+        double z = calculatedVector[2];
+        return Math.sqrt(Math.pow(x, 2) + Math.pow(z, 2));
     }
     
+    public static double getDistanceToTarget(double tx, double ty, double yaw){
+        return getDistanceToTarget(tx, ty, yaw, CAMERA_PITCH);
+    }
+
+    public static double getDistanceToTarget(double tx, double ty){
+        return getDistanceToTarget(tx, ty, 0, CAMERA_PITCH);
+    }
+    /**
+     * Returns vector from limelight to target, given tx, ty, yaw, and pitch of the limelight. 0 yaw is defined as straight forward, positive yaw is clockwise (to the right), negative yaw is ccw (to the left).
+     * @param tx
+     * @param ty
+     * @param yaw of the camera. 0 yaw is defined as straightforward, positive is to the RIGHT, negative is to the LEFT.
+     * @param pitch of the camera. 0 pitch is defined as straightforward, positive is upward.
+     * @return the vector [x, y, z] of target assuming limelight is at [0, 0, 0]
+     */
     public static double[] getVectorToTarget(double tx, double ty, double yaw, double pitch){
         /* System of equations:
          * a1x + b1z = c1y
@@ -71,6 +75,10 @@ public class Parallax {
         double[] returnedVec = {calculatedX, HEIGHT_DIFF, calculatedZ};
 
         return returnedVec;
+    }
+
+    public static double[] getVectorToTarget(double tx, double ty, double yaw){
+        return getVectorToTarget(tx, ty, yaw, CAMERA_PITCH);
     }
 
     public static boolean checkValidVectors(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double threshold){
