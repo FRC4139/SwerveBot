@@ -53,6 +53,26 @@ public class Parallax {
         return distance;
     }
     
+    public static double[] getVectorToTarget(double tx, double ty, double yaw, double pitch){
+        /* System of equations:
+         * a1x + b1z = c1y
+         * a2x + b2z = c2y
+        */
+        double a1 = Math.cos(yaw) - Math.tan(tx) * Math.sin(yaw) * Math.cos(pitch);
+        double b1 = -Math.sin(yaw) - Math.tan(tx) * Math.cos(yaw) * Math.cos(pitch);
+        double c1 = Math.tan(tx) * Math.sin(pitch);
+        double a2 = -Math.sin(pitch) * Math.sin(yaw) - Math.tan(ty) * Math.sin(yaw) * Math.cos(pitch);
+        double b2 = -Math.sin(pitch) * Math.cos(yaw) - Math.tan(ty) * Math.cos(yaw) * Math.cos(pitch);
+        double c2 = -Math.cos(pitch) + Math.tan(ty) * Math.sin(pitch);
+
+        double calculatedZ = HEIGHT_DIFF * (c1 * a2 - c2 * a1) / (b1 * a2 - a1 * b2);
+        double calculatedX = (c1 * HEIGHT_DIFF - b1 * calculatedZ) / a1;
+
+        double[] returnedVec = {calculatedX, HEIGHT_DIFF, calculatedZ};
+
+        return returnedVec;
+    }
+
     public static boolean checkValidVectors(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double threshold){
         double correctedTx,correctedTy1,correctedTy2;
 
