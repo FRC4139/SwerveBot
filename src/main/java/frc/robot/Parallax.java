@@ -7,13 +7,16 @@ public class Parallax {
     public static double DEFAULT_THRESHOLD = 0.1; //feet
     public static double CAMERA_PITCH = 0.436332; //radians
     /**
-     * Returns horizontal distance from limelight to basket using parallax. Requires tx and ty from two viewpoints.
-     * @param dx Change in translational distance
-     * @param tx1 Horizontal offset from crosshair to target at viewpoint 1
-     * @param ty1 Vertical offset from crosshair to target at viewpoint 1
-     * @param tx2 Horizontal offset from crosshair to target at viewpoint 2
-     * @param ty2 Vertical offset from crosshair to target at viewpoint 2
-     * @return
+     * Returns horizontal distance using parallax, requires data from two viewpoints, as well as change in position between the two viewpoints
+     * @param tx1 tx of viewpoint 1
+     * @param ty1 ty of viewpoint 1
+     * @param tx2 tx of viewpoint 2
+     * @param ty2 ty of viewpoint 2
+     * @param dx difference in x position between viewpoints (viewpoint 2 - viewpoint 1)
+     * @param dz difference in z position between viewpoints (viewpoint 2 - viewpoint 1)
+     * @param yaw difference between viewpoints. POSITIVE if viewpoint 2 points to the RIGHT of viewpoint 1, NEGATIVE if viewpoint 2 points to the LEFT of viewpoint 1.
+     * @param pitch of the camera (assumes pitch does not change)
+     * @return horizontal distance using parallax
      */
     public static double getDistanceToTarget(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double pitch){
         //Returns horizontal distance from lightlight to basket using parallax
