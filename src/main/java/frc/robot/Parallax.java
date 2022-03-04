@@ -15,22 +15,24 @@ public class Parallax {
      * @param ty2 Vertical offset from crosshair to target at viewpoint 2
      * @return
      */
-    public static double getDistanceToTarget(double tx1, double ty1, double tx2, double ty2, double dx, double dz){
+    public static double getDistanceToTarget(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double pitch){
         //Returns horizontal distance from lightlight to basket using parallax
-        double distance;
-        double correctedTy1, correctedTy2;
         
-        correctedTy1 = ty1 + CAMERA_PITCH;
-        correctedTy2 = ty2 + CAMERA_PITCH;
+        double[] v1 = getVectorToTarget(tx1, ty1, 0, pitch);
+        double[] v2 = getVectorToTarget(tx2, ty2, yaw, pitch);
 
-        double k = dz / (Math.tan(correctedTy2) / Math.tan(correctedTy1) - 1);
-        distance = k / Math.cos(tx2);
+        double k = dz/((v1[2] * v2[1])/(v1[1]) - v2[2]);
+
+        //check: if k == 1, then binocular agrees with monocular
+        //check: valid vectors
+
+        double distance = k * getDistanceToTarget(tx2, ty2, yaw, pitch);
+        
         return distance;
     }
 
     public static double getDistanceToTarget(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw){
-        double correctedTx = tx2 + yaw;
-        return getDistanceToTarget(tx1, ty1, correctedTx, ty2, dx, dz);
+        return getDistanceToTarget(tx1, ty1, tx2, ty2, dx, dz, yaw, CAMERA_PITCH);
     }
     
 
@@ -81,24 +83,21 @@ public class Parallax {
         return getVectorToTarget(tx, ty, yaw, CAMERA_PITCH);
     }
 
-    public static boolean checkValidVectors(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double threshold){
-        double correctedTx,correctedTy1,correctedTy2;
+    public static boolean checkValidVectors(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double pitch, double threshold){
+        double[] v1 = getVectorToTarget(tx1, ty1, 0, pitch);
+        double[] v2 = getVectorToTarget(tx2, ty2, yaw, pitch);
+        double k = dz/((v1[2] * v2[1])/(v1[1]) - v2[2]);
+        double j = k * v2[1] / v1[1];
 
-        correctedTx = tx2 + yaw;
-        correctedTy1 = ty1 + CAMERA_PITCH;
-        correctedTy2 = ty2 + CAMERA_PITCH;
-        
-        double dxCalculated = dz * (Math.tan(correctedTy2)*Math.tan(tx1) - Math.tan(correctedTy1)*Math.tan(correctedTx))/(Math.tan(correctedTy2) - Math.tan(correctedTy1));
-        
-        if (Math.abs(dx - dxCalculated) <= threshold){
-            return true;
-        }
-        else{
-            return false;
-        }
+        double dxCalculated = j * v1[0] - k*v2[0];
+
+        return (Math.abs(dxCalculated - dx) <= threshold);
+    }
+    public static boolean checkValidVectors(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double threshold){
+        return checkValidVectors(tx1,ty1,tx2,ty2,dx,dz,yaw,CAMERA_PITCH,threshold);
     }
     public static boolean checkValidVectors(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw){
-        return checkValidVectors(tx1,ty1,tx2,ty2,dx,dz,yaw,DEFAULT_THRESHOLD);
+        return checkValidVectors(tx1,ty1,tx2,ty2,dx,dz,yaw,CAMERA_PITCH,DEFAULT_THRESHOLD);
     }
     /**
      * Returns the distance if monocular and binocular distance measures agree (within threshold), and returns -1.0 if measures don't agree.
@@ -111,10 +110,10 @@ public class Parallax {
      * @param threshold
      * @return
      */
-    public static double getAgreedDistance(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double threshold){
-        double binocularDistance = getDistanceToTarget(tx1,ty1,tx2,ty2,dx,dz,yaw);
-        double monocularDistance = getDistanceToTarget(tx2,ty2);
-        if (!checkValidVectors(tx1,ty1,tx2,ty2,dx,dz,yaw,threshold)){
+    public static double getAgreedDistance(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double pitch, double threshold){
+        double binocularDistance = getDistanceToTarget(tx1,ty1,tx2,ty2,dx,dz,yaw,pitch);
+        double monocularDistance = getDistanceToTarget(tx2,ty2,yaw,pitch);
+        if (!checkValidVectors(tx1,ty1,tx2,ty2,dx,dz,yaw,pitch,threshold)){
             return -1.0;
         }
         if(Math.abs(binocularDistance - monocularDistance) <= threshold){
@@ -124,8 +123,11 @@ public class Parallax {
             return -1.0;
         }
     }
+    public static double getAgreedDistance(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw, double threshold){
+        return getAgreedDistance(tx1,ty1,tx2,ty2,dx,dz,yaw, CAMERA_PITCH, threshold);
+    }
     public static double getAgreedDistance(double tx1, double ty1, double tx2, double ty2, double dx, double dz, double yaw){
-        return getAgreedDistance(tx1,ty1,tx2,ty2,dx,dz,yaw,DEFAULT_THRESHOLD);
+        return getAgreedDistance(tx1,ty1,tx2,ty2,dx,dz,yaw, CAMERA_PITCH, DEFAULT_THRESHOLD);
     }
     
 }
