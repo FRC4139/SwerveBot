@@ -55,7 +55,7 @@ public class Robot extends TimedRobot {
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
   private XboxController controller;
-  private WPI_TalonFX turretTalon, shootTalon, magazineTalon; 
+  private WPI_TalonFX shootTalon, magazineTalon; 
   private SlewRateLimiter driveRateLimiter;
   private SlewRateLimiter rotationRateLimiter;
   //private SwerveModuleController testModule;
@@ -74,14 +74,14 @@ public class Robot extends TimedRobot {
   private NetworkTableEntry ty; // vertical offset from crosshair to target (-20.5deg to 20.5deg)
   private NetworkTableEntry ta; // target area of image (0% of image to 100% of image)
 
-  //limit switches
-  private DigitalInput toplimitSwitch;
-  private DigitalInput bottomlimitSwitch;
+  private double prevX = 0, prevY = 0;
+
+  
 
   //Servo
   Servo exampleServo = new Servo(0);
-
-  private WPI_TalonFX testTalonFX;
+  Turret turret; 
+  
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -93,11 +93,13 @@ public class Robot extends TimedRobot {
     // SmartDashboard.putData("Auto choices", m_chooser);
     controller = new XboxController(0);
     shootTalon = new WPI_TalonFX(34);
-    turretTalon = new WPI_TalonFX(35);
+    
     magazineTalon = new WPI_TalonFX(33);
-    testTalonFX = new WPI_TalonFX(36);
+    
+    turret = new Turret(35, 0); 
+
     //shootTalon = new WPI_TalonFX(32);
-    toplimitSwitch = new DigitalInput(0);
+  
     driveRateLimiter = new SlewRateLimiter(3);
     rotationRateLimiter = new SlewRateLimiter(3);
     // testModule =  new SwerveModuleController(steerTalon, driveTalon);
@@ -157,9 +159,9 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousInit() {
-    m_autoSelected = m_chooser.getSelected();
+    //m_autoSelected = m_chooser.getSelected();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
-    System.out.println("Auto selected: " + m_autoSelected);
+    //System.out.println("Auto selected: " + m_autoSelected);
   }
 
   /** This function is called periodically during autonomous. */
@@ -182,8 +184,11 @@ public class Robot extends TimedRobot {
     double limeY = ty.getDouble(0.0);
     double limeArea = ta.getDouble(0.0);
 
+    if(limeX != 0) prevX = limeX;
+    if(limeY != 0) prevY = limeY;
+
     if(limeArea > 15) {
-      ChassisSpeeds speeds = new ChassisSpeeds(0, 0, limeX < 0 ? -(Math.PI / 12) : (Math.PI / 12));
+      ChassisSpeeds speeds = new ChassisSpeeds(0, 0, prevX < 0 ? -(Math.PI / 12) : (Math.PI / 12));
       SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
       moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond, canCoderFL.getAbsolutePosition());
       moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond, canCoderFR.getAbsolutePosition());
@@ -191,10 +196,14 @@ public class Robot extends TimedRobot {
       moduleBR.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond, canCoderBR.getAbsolutePosition());
     }
 
-    SmartDashboard.putNumber("Limelight X", tx.getDouble(0.0));
-    SmartDashboard.putNumber("Limelight Y", ty.getDouble(0.0));
+    if(controller.getYButtonPressed()) {
+      turret.lockOn(limeX);
+    }
+
+    SmartDashboard.putNumber("Limelight X", prevX);
+    SmartDashboard.putNumber("Limelight Y", prevY);
     SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
-    SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(limeX),Math.toRadians(limeY)));
+    SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
   }
 
   /** This function is called once when teleop is enabled. */
@@ -283,45 +292,11 @@ public class Robot extends TimedRobot {
   
   @Override
   public void testPeriodic() {
-    // code for turret and shooter 
-    //SmartDashboard.putBoolean("Top Limit Switch", toplimitSwitch.get());
-    //limit switches when turret talon reaches limit, then it stops. 
-    // if(toplimitSwitch.get()) {
-    //     turretTalon.set(0);
-    // }
-    // else {
-    //   //continue
-    // }
-    
-    //SendableBuilder Builder = new SendableBuilder();
-    //exampleServo.initSendable(SendableBuilder Builder);
-    // if(controller.getYButton()){
-    //   exampleServo.setAngle(165);
-    // }
-    // else{
-    //   exampleServo.setAngle(70);
-    // }
-    testTalonFX.set(controller.getLeftY());
-    //controlling 3 falcon
-    /*
-    shootTalon = new WPI_TalonFX(34);
-    turretTalon = new WPI_TalonFX(35);
-    magazineTalon = new WPI_TalonFX(33);
-    */
+    if (!turret.isCalibrated) {
+      turret.calibrate();
+    } else {
+      turret.turn(controller.getLeftY() / 5);
+    }
 
-    //shootTalon.set(controller.getLeftY());
-    //magazineTalon.set(controller.getRightTriggerAxis());
-    //magazineTalon.set(controller.getRightY());
-    //turretTalon.set(controller.getRightY());
-    // if(controller.getLeftStickButton()) { //controlls shootTalon(34)
-      
-    // }
-
-    // if(controller.getRightStickButton()) { //controlls turretTalon(35)
-
-    // }
-
-    
-      //testTalonFX.set(controller.getLeftY());
   }
 }

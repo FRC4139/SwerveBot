@@ -1,11 +1,11 @@
 package frc.robot;
 
 public class Parallax {
-    public static double LIMELIGHT_HEIGHT = 2.6667; //feet
-    public static double TAPE_HEIGHT = 8.0; //feet
+    public static double LIMELIGHT_HEIGHT = 34/12; //feet
+    public static double TAPE_HEIGHT = 104/12; //feet
     public static double HEIGHT_DIFF = TAPE_HEIGHT - LIMELIGHT_HEIGHT; //feet
     public static double DEFAULT_THRESHOLD = 0.1; //feet
-    public static double CAMERA_PITCH = 0.436332; //radians
+    public static double CAMERA_PITCH = Math.toRadians(25); //radians
     /**
      * Returns horizontal distance using parallax, requires data from two viewpoints, as well as change in position between the two viewpoints
      * @param tx1 tx of viewpoint 1
