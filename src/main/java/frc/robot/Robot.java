@@ -103,10 +103,10 @@ public class Robot extends TimedRobot {
     driveRateLimiter = new SlewRateLimiter(3);
     rotationRateLimiter = new SlewRateLimiter(3);
     // testModule =  new SwerveModuleController(steerTalon, driveTalon);
-    moduleFL = new SwerveModuleController(new WPI_TalonFX(50), new WPI_TalonFX(51));
+    moduleBR = new SwerveModuleController(new WPI_TalonFX(50), new WPI_TalonFX(51));
     moduleFR = new SwerveModuleController(new WPI_TalonFX(56), new WPI_TalonFX(57));
     moduleBL = new SwerveModuleController(new WPI_TalonFX(52), new WPI_TalonFX(53));
-    moduleBR = new SwerveModuleController(new WPI_TalonFX(54), new WPI_TalonFX(55));
+    moduleFL = new SwerveModuleController(new WPI_TalonFX(54), new WPI_TalonFX(32));
     // testCanCoder = new CANCoder(40);
     canCoderFL = new CANCoder(40);
     canCoderFR = new CANCoder(46);
@@ -198,6 +198,9 @@ public class Robot extends TimedRobot {
 
     if(controller.getYButtonPressed()) {
       turret.lockOn(limeX);
+      SmartDashboard.putBoolean("isLockingOn", true);
+    } else {
+      SmartDashboard.putBoolean("isLockingOn", false);
     }
 
     SmartDashboard.putNumber("Limelight X", prevX);
@@ -214,7 +217,11 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     //System.out.println("Left Y:" + controller.getLeftY() + " | Right Y: " + controller.getRightY());
-
+    if (!turret.isCalibrated) {
+      turret.calibrate();
+    } else {
+      turret.turn(controller.getLeftY() / 5);
+    }
     double turnInput = controller.getRightY();
     double driveInput = controller.getLeftY();
     SmartDashboard.putNumber("turn input raw", turnInput);
@@ -228,7 +235,7 @@ public class Robot extends TimedRobot {
     if (targetAngle < 0) targetAngle += 360;
 
     if(controller.getStartButtonPressed()) ahrs.calibrate();
-    while(ahrs.isCalibrating()) {} // don't continue until calibrated
+    while(ahrs.isCalibrating()) {} // don't continue until calibrated // SUS
     
     if (controller.getYButtonPressed()) selectedModule++;
     if (controller.getAButtonPressed()) selectedModule--;
@@ -260,7 +267,7 @@ public class Robot extends TimedRobot {
       strafe = 0; 
       rotation = 0; 
     }
-
+    
     // falcon 500 w/ talon fx max speed: 6380 RPM
     // ChassisSpeeds speeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
     SmartDashboard.putNumber("Gyro", ahrs.getRotation2d().getDegrees());
@@ -273,6 +280,7 @@ public class Robot extends TimedRobot {
     moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond, canCoderFR.getAbsolutePosition());
     moduleBL.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond, canCoderBL.getAbsolutePosition());
     moduleBR.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond, canCoderBR.getAbsolutePosition());
+    ProcessLockOn();
   }
 
 
@@ -292,11 +300,53 @@ public class Robot extends TimedRobot {
   
   @Override
   public void testPeriodic() {
-    if (!turret.isCalibrated) {
-      turret.calibrate();
+    
+
+    /*
+    switch (m_autoSelected) {
+      case kCustomAuto:
+        // Put custom auto code here
+        break;
+      case kDefaultAuto:
+      default:
+        // Put default auto code here
+        break;
+    }
+    */
+
+    
+    
+
+  }
+
+  private void ProcessLockOn() {
+    double limeX = tx.getDouble(0.0);
+    double limeY = ty.getDouble(0.0);
+    double limeArea = ta.getDouble(0.0);
+
+    if(limeX != 0) prevX = limeX;
+    if(limeY != 0) prevY = limeY;
+
+    
+
+    if(controller.getLeftTriggerAxis() > 0.75) {
+      turret.lockOn(limeX);
+      SmartDashboard.putBoolean("isLockingOn", true);
     } else {
-      turret.turn(controller.getLeftY() / 5);
+      SmartDashboard.putBoolean("isLockingOn", false);
     }
 
+    SmartDashboard.putNumber("Limelight X", prevX);
+    SmartDashboard.putNumber("Limelight Y", prevY);
+    SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
+    SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
+    if(limeArea > 15 && false) {
+      ChassisSpeeds speeds = new ChassisSpeeds(0, 0, prevX < 0 ? -(Math.PI / 12) : (Math.PI / 12));
+      SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
+      moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond, canCoderFL.getAbsolutePosition());
+      moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond, canCoderFR.getAbsolutePosition());
+      moduleBL.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond, canCoderBL.getAbsolutePosition());
+      moduleBR.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond, canCoderBR.getAbsolutePosition());
+    }
   }
 }

@@ -46,7 +46,8 @@ public class Turret {
     }
 
     public void lockOn(double tx) {
-        turn(-(MAX_SPEED*Math.signum(tx)));
+        
+        turn(MAX_SPEED*tx / 20);
     }
     
 }
