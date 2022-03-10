@@ -10,7 +10,7 @@ public class Turret {
     private DigitalInput limitSwitchInput; 
     public boolean isCalibrated; 
     private static final int MAX_SENSOR_POSITION = 185000;
-    private static final double MAX_SPEED = 0.2;
+    public static final double MAX_SPEED = 0.2;
     public Turret(int tf, int ls) { 
         turretTalon = new WPI_TalonFX(tf); 
         limitSwitchInput = new DigitalInput(ls);
