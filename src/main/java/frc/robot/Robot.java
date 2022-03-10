@@ -8,6 +8,7 @@ import javax.xml.crypto.dsig.keyinfo.KeyValue;
 
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import com.ctre.phoenix.sensors.CANCoder;
 import com.kauailabs.navx.frc.AHRS;
 
@@ -56,6 +57,8 @@ public class Robot extends TimedRobot {
   private SlewRateLimiter driveRateLimiter;
   private SlewRateLimiter rotationRateLimiter;
 
+  private WPI_TalonSRX intakeTalon;
+
   private SwerveModuleController moduleFL, moduleFR, moduleBR, moduleBL;
 
   private CANCoder canCoderFL, canCoderFR, canCoderBR, canCoderBL;
@@ -93,6 +96,7 @@ public class Robot extends TimedRobot {
     turret = new Turret(35, 0); 
     lifterTalon = new WPI_TalonFX(37);
     lifterTalon.setNeutralMode(NeutralMode.Brake);
+    intakeTalon = new WPI_TalonSRX(3);
 
   
     driveRateLimiter = new SlewRateLimiter(3);
@@ -100,8 +104,7 @@ public class Robot extends TimedRobot {
 
     // KEEP THESE BETWEEN -180 and 180 ??? TEST THIS
     //                     FL   FR   BR   BL
-    offsets = new double[]{-52.3,-95.4,55.5,-36};
-
+    offsets = new double[]{-71.40276615774881, -130.23219526863326, 40.34038220439106, -39.39342396706343};
     canCoderFL = new CANCoder(44);
     canCoderFR = new CANCoder(46);
     canCoderBR = new CANCoder(40);
@@ -224,8 +227,8 @@ public class Robot extends TimedRobot {
       turret.calibrate();
     } else {
       if (!(controller.getLeftBumper() && controller.getRightBumper())) {
-        if (controller.getLeftTriggerAxis() > 0.25) turret.turn(controller.getLeftTriggerAxis() * Turret.MAX_SPEED);
-        else if (controller.getRightTriggerAxis() > 0.25) turret.turn(-1 * controller.getRightTriggerAxis() * Turret.MAX_SPEED);
+        if (controller.getXButton()) turret.turn(-0.1);
+        else if (controller.getBButton()) turret.turn(0.1);
         else turret.turn(0);
       } else turret.turn(0);
     }
@@ -238,18 +241,29 @@ public class Robot extends TimedRobot {
     } else lifterTalon.set(0);
 
     // falcon 500 w/ talon fx max speed: 6380 RPM
-    // ChassisSpeeds notFieldRelativeSpeeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
+
+    // INTAKE
+    /*
+    if(controller.getLeftTriggerAxis() > 0.25) {
+      intakeTalon.set(-controller.getLeftTriggerAxis() * 0.8);
+    } else intakeTalon.set(0);
+    */
     
 
-    double forward = driveRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftY(), 0.12));
-    double strafe = rotationRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftX(), 0.12));
-    double rotation = -MathUtil.applyDeadband(controller.getRightX(), 0.12);
+    double forward = driveRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftY(), 0.2));
+    double strafe = rotationRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftX(), 0.2));
+    double rotation = -MathUtil.applyDeadband(controller.getRightX(), 0.2);
+    SmartDashboard.putNumber("forward", forward);
+    SmartDashboard.putNumber("strafe", strafe);
+    SmartDashboard.putNumber("rotation", rotation);
     forward *= 0.5f;
     strafe *= 0.5f;
+
+    ChassisSpeeds notFieldRelativeSpeeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
     
     SmartDashboard.putNumber("Gyro", ahrs.getRotation2d().getDegrees());
     ChassisSpeeds frSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation, ahrs.getRotation2d());
-    SwerveModuleState states[] = kinematics.toSwerveModuleStates(frSpeeds);
+    SwerveModuleState states[] = kinematics.toSwerveModuleStates(notFieldRelativeSpeeds);
 
     SmartDashboard.putNumber("FL Module Speed", states[0].speedMetersPerSecond);
     SmartDashboard.putNumber("FL Module Angle", states[0].angle.getDegrees());
@@ -285,7 +299,7 @@ public class Robot extends TimedRobot {
     if (controller.getAButtonPressed()) selectedModule--;
     selectedModule = selectedModule % 4;
 
-    if (controller.getBButton()) offsets[selectedModule] += controller.getLeftY() * 0.25f;
+    if (controller.getBButton()) offsets[selectedModule] += MathUtil.applyDeadband(controller.getLeftY(), 0.25) * 0.25f;
     modules[selectedModule].SetOffset(offsets[selectedModule]);
 
     if (offsets[selectedModule] < -180) offsets[selectedModule] += 360;
@@ -334,13 +348,16 @@ public class Robot extends TimedRobot {
     if(limeY != 0) prevY = limeY;
 
     
-
-    if(controller.getLeftTriggerAxis() > 0.75) {
+/*
+    if(controller.getRightTriggerAxis() > 0.75) {
       turret.lockOn(limeX);
+      shootTalon.set(0.6);
       SmartDashboard.putBoolean("isLockingOn", true);
     } else {
       SmartDashboard.putBoolean("isLockingOn", false);
+      shootTalon.set(0);
     }
+    */
 
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);

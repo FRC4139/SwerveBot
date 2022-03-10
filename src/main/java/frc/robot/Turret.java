@@ -30,7 +30,7 @@ public class Turret {
     }
 
     public void turn(double speed) {
-        SmartDashboard.putNumber("input speed", speed);
+        //SmartDashboard.putNumber("input speed", speed);
         if (turretTalon.getSensorCollection().getIntegratedSensorPosition() > MAX_SENSOR_POSITION) {
             // only want negative
             speed = Math.min(speed, 0);
@@ -42,8 +42,8 @@ public class Turret {
         if (speed > MAX_SPEED) speed = MAX_SPEED;
         if (speed < -MAX_SPEED) speed = -MAX_SPEED; 
         turretTalon.set(speed);
-        SmartDashboard.putNumber("output speed", speed);
-        SmartDashboard.putNumber("turret rotation raw", turretTalon.getSensorCollection().getIntegratedSensorPosition());
+        //SmartDashboard.putNumber("output speed", speed);
+        //SmartDashboard.putNumber("turret rotation raw", turretTalon.getSensorCollection().getIntegratedSensorPosition());
     }
 
     public void lockOn(double tx) {
