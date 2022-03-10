@@ -19,8 +19,9 @@ public class Turret {
     public void calibrate() { 
         // negative is towards switch
         // positive is away 
+        SmartDashboard.putBoolean("limit switch status", limitSwitchInput.get());
         if (limitSwitchInput.get()) {
-            turretTalon.set(-0.1);
+            turretTalon.set(-0.075);
         } else {
             isCalibrated = true; 
             turretTalon.getSensorCollection().setIntegratedSensorPosition(0,0);

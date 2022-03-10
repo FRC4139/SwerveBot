@@ -6,6 +6,7 @@ package frc.robot;
 
 import java.util.ArrayList;
 
+import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import com.ctre.phoenix.sensors.CANCoder;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator.Builder;
@@ -48,14 +49,14 @@ public class Robot extends TimedRobot {
   private static final Translation2d locationBL = new Translation2d(-wheelBase / 2, trackWidth / 2);
   private static final Translation2d locationBR = new Translation2d(-wheelBase / 2, -trackWidth / 2);
 
-  private static final double MAX_SPEED_MS = 0;
-  //private static final double MAX_SPEED_MS = 2.0; // placeholder
+  //private static final double MAX_SPEED_MS = 0;
+  private static final double MAX_SPEED_MS = 2.0; // placeholder
 
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
   private XboxController controller;
-  private WPI_TalonFX shootTalon, magazineTalon; 
+  private WPI_TalonFX shootTalon, magazineTalon, lifterTalon; 
   private SlewRateLimiter driveRateLimiter;
   private SlewRateLimiter rotationRateLimiter;
   //private SwerveModuleController testModule;
@@ -103,15 +104,18 @@ public class Robot extends TimedRobot {
     driveRateLimiter = new SlewRateLimiter(3);
     rotationRateLimiter = new SlewRateLimiter(3);
     // testModule =  new SwerveModuleController(steerTalon, driveTalon);
-    moduleBR = new SwerveModuleController(new WPI_TalonFX(50), new WPI_TalonFX(51));
-    moduleFR = new SwerveModuleController(new WPI_TalonFX(56), new WPI_TalonFX(57));
-    moduleBL = new SwerveModuleController(new WPI_TalonFX(52), new WPI_TalonFX(53));
     moduleFL = new SwerveModuleController(new WPI_TalonFX(54), new WPI_TalonFX(32));
+    moduleFR = new SwerveModuleController(new WPI_TalonFX(56), new WPI_TalonFX(57));
+    moduleBR = new SwerveModuleController(new WPI_TalonFX(50), new WPI_TalonFX(51));
+    moduleBL = new SwerveModuleController(new WPI_TalonFX(52), new WPI_TalonFX(53));
+    lifterTalon = new WPI_TalonFX(37);
+    lifterTalon.setNeutralMode(NeutralMode.Brake);
     // testCanCoder = new CANCoder(40);
-    canCoderFL = new CANCoder(40);
+    canCoderFL = new CANCoder(44);
     canCoderFR = new CANCoder(46);
+    canCoderBR = new CANCoder(40);
     canCoderBL = new CANCoder(42);
-    canCoderBR = new CANCoder(44);
+    
 
     // gyro
     ahrs = new AHRS(SPI.Port.kMXP);
@@ -119,7 +123,7 @@ public class Robot extends TimedRobot {
 
     kinematics = new SwerveDriveKinematics(locationFL, locationFR, locationBL, locationBR);
     odometry = new SwerveDriveOdometry(kinematics, ahrs.getRotation2d());
-    offsets = new double[]{161.25,-109.5,-68,132.6};
+    offsets = new double[]{-52.3,264.6,-36,55.5};
     moduleFL.SetOffset(offsets[0]);
     moduleFR.SetOffset(offsets[1]);
     moduleBL.SetOffset(offsets[2]);
@@ -220,7 +224,8 @@ public class Robot extends TimedRobot {
     if (!turret.isCalibrated) {
       turret.calibrate();
     } else {
-      turret.turn(controller.getLeftY() / 5);
+      turret.turn(0);
+      //turret.turn(controller.getLeftY() / 5);
     }
     double turnInput = controller.getRightY();
     double driveInput = controller.getLeftY();
@@ -268,6 +273,11 @@ public class Robot extends TimedRobot {
       rotation = 0; 
     }
     
+    if (controller.getLeftBumper() && controller.getRightBumper()) { 
+      if (controller.getLeftTriggerAxis() > 0.1) lifterTalon.set(0.25);
+      else if (controller.getRightTriggerAxis() > 0.1) lifterTalon.set(-0.25);
+      
+    } else lifterTalon.set(0);
     // falcon 500 w/ talon fx max speed: 6380 RPM
     // ChassisSpeeds speeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
     SmartDashboard.putNumber("Gyro", ahrs.getRotation2d().getDegrees());
@@ -301,22 +311,37 @@ public class Robot extends TimedRobot {
   @Override
   public void testPeriodic() {
     
-
-    /*
-    switch (m_autoSelected) {
-      case kCustomAuto:
-        // Put custom auto code here
-        break;
-      case kDefaultAuto:
-      default:
-        // Put default auto code here
-        break;
+    // CALIBRATION 
+    if (controller.getYButtonPressed()) selectedModule++;
+    if (controller.getAButtonPressed()) selectedModule--;
+    selectedModule = Math.min(Math.max(selectedModule, 0), 3);
+    if (controller.getBButton()) offsets[selectedModule] += controller.getLeftY() * 0.25f;
+    modules[selectedModule].SetOffset(offsets[selectedModule]);
+    SmartDashboard.putNumber("selected module number", selectedModule);
+    SmartDashboard.putNumber("selected offset", offsets[selectedModule]);
+    //SmartDashboard.putNumber("rot", );
+    //moduleFL.SetTargetAngleAndSpeed(0, 0.1, canCoderFL.getAbsolutePosition());
+    SmartDashboard.putNumber("Gyro", ahrs.getRotation2d().getDegrees());
+    double forward = 0, strafe=0, rotation = 0; 
+    if (controller.getBButton()) {
+      forward = 0.1; 
+      strafe = 0; 
+      rotation = 0; 
     }
-    */
-
+    ChassisSpeeds frSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation, ahrs.getRotation2d());
+    SwerveModuleState states[] = kinematics.toSwerveModuleStates(frSpeeds);
+    SmartDashboard.putNumber("Robot Speed Desired", states[0].speedMetersPerSecond);
+    SmartDashboard.putNumber("Robot Angle Desired", states[0].angle.getDegrees());
+    //var gyroAngle = Rotation2d.fromDegrees(ahrs.getAngle());
+    moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond, canCoderFL.getAbsolutePosition());
+    moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond, canCoderFR.getAbsolutePosition());
+    moduleBL.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond, canCoderBL.getAbsolutePosition());
+    moduleBR.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond, canCoderBR.getAbsolutePosition());
+    SmartDashboard.putNumber("cancoder FL", canCoderFL.getAbsolutePosition());
+    SmartDashboard.putNumber("cancoder FR", canCoderFR.getAbsolutePosition());
+    SmartDashboard.putNumber("cancoder BL", canCoderBL.getAbsolutePosition());
+    SmartDashboard.putNumber("cancoder BR", canCoderBR.getAbsolutePosition());
     
-    
-
   }
 
   private void ProcessLockOn() {
@@ -340,13 +365,13 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Limelight Y", prevY);
     SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
     SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
-    if(limeArea > 15 && false) {
-      ChassisSpeeds speeds = new ChassisSpeeds(0, 0, prevX < 0 ? -(Math.PI / 12) : (Math.PI / 12));
-      SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
-      moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond, canCoderFL.getAbsolutePosition());
-      moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond, canCoderFR.getAbsolutePosition());
-      moduleBL.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond, canCoderBL.getAbsolutePosition());
-      moduleBR.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond, canCoderBR.getAbsolutePosition());
-    }
+    // if(limeArea > 15 && false) {
+    //   ChassisSpeeds speeds = new ChassisSpeeds(0, 0, prevX < 0 ? -(Math.PI / 12) : (Math.PI / 12));
+    //   SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
+    //   moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond, canCoderFL.getAbsolutePosition());
+    //   moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond, canCoderFR.getAbsolutePosition());
+    //   moduleBL.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond, canCoderBL.getAbsolutePosition());
+    //   moduleBR.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond, canCoderBR.getAbsolutePosition());
+    // }
   }
 }

@@ -24,6 +24,7 @@ public class SwerveModuleController {
         offset = newOffset;
     }
     public void SetTargetAngleAndSpeed(double angle, double speed, double currentAngle) { 
+        SmartDashboard.putNumber("current module angle", currentAngle);
         targetAngle = angle;
         driveSpeed = speed; 
         currentAngle += offset; 

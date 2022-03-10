@@ -38,7 +38,16 @@ public class Parallax {
         return getDistanceToTarget(tx1, ty1, tx2, ty2, dx, dz, yaw, CAMERA_PITCH);
     }
     
+    public static double getDistanceToTarget(double tx1, double ty1, double tx2, double ty2, double ds, double yaw){
+        double[] v1 = getVectorToTarget(tx1, ty1, 0, CAMERA_PITCH);
+        double[] v2 = getVectorToTarget(tx2, ty2, yaw, CAMERA_PITCH);
+        double a = Math.pow(v2[1]*v1[0]-v2[0]*v1[1],2) + Math.pow(v1[2]*v2[1]-v2[2]*v1[1],2);
+        double k = ds * v1[1] / Math.sqrt(a);
 
+        double distance = k * getDistanceToTarget(tx2, ty2, yaw, CAMERA_PITCH);
+
+        return distance;
+    }
 
     public static double getDistanceToTarget(double tx, double ty, double yaw, double pitch){
         double[] calculatedVector = getVectorToTarget(tx, ty, yaw, pitch);
