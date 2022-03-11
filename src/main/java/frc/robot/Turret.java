@@ -35,7 +35,7 @@ public class Turret {
             // only want negative
             speed = Math.min(speed, 0);
         } 
-        if (!limitSwitchInput.get()) {
+        if (!limitSwitchInput.get() || turretTalon.getSensorCollection().getIntegratedSensorPosition() < 1000) {
             // only want positive
             speed = Math.max(speed, 0);
         }

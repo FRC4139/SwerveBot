@@ -10,6 +10,9 @@ import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import com.ctre.phoenix.sensors.CANCoder;
+import com.ctre.phoenix.sensors.PigeonIMU;
+import com.ctre.phoenix.sensors.WPI_Pigeon2;
+import com.ctre.phoenix.sensors.WPI_PigeonIMU;
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.math.MathUtil;
@@ -59,6 +62,8 @@ public class Robot extends TimedRobot {
 
   private WPI_TalonSRX intakeTalon;
 
+  private WPI_Pigeon2 pigeon;
+
   private SwerveModuleController moduleFL, moduleFR, moduleBR, moduleBL;
 
   private CANCoder canCoderFL, canCoderFR, canCoderBR, canCoderBL;
@@ -75,7 +80,7 @@ public class Robot extends TimedRobot {
   private NetworkTableEntry ta; // target area of image (0% of image to 100% of image)
 
   private double prevX = 0, prevY = 0;
-
+  private double lifterLockValue = 0; 
   //Servo
   Servo exampleServo = new Servo(0);
   Turret turret; 
@@ -104,7 +109,7 @@ public class Robot extends TimedRobot {
 
     // KEEP THESE BETWEEN -180 and 180 ??? TEST THIS
     //                     FL   FR   BR   BL
-    offsets = new double[]{-71.40276615774881, -130.23219526863326, 40.34038220439106, -39.39342396706343};
+    offsets = new double[]{-76.60070328867691, -129.5758834784851, 29.792256410854513, -59.42133151739842};
     canCoderFL = new CANCoder(44);
     canCoderFR = new CANCoder(46);
     canCoderBR = new CANCoder(40);
@@ -219,26 +224,45 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
-    if(controller.getStartButtonPressed()) ahrs.calibrate();
-    while(ahrs.isCalibrating()) {} // don't continue until calibrated // SUS
+    //if(controller.getStartButtonPressed()) ahrs.calibrate();
+    //while(ahrs.isCalibrating()) {} // don't continue until calibrated // SUS
 
-    // TURRET MOVEMENT
+    // TURRET AND INTAKE MOVEMENT
     if (!turret.isCalibrated) {
       turret.calibrate();
-    } else {
-      if (!(controller.getLeftBumper() && controller.getRightBumper())) {
-        if (controller.getXButton()) turret.turn(-0.1);
-        else if (controller.getBButton()) turret.turn(0.1);
-        else turret.turn(0);
-      } else turret.turn(0);
     }
+
+    if (controller.getAButton()) { 
+      magazineTalon.set(0.5);
+    } else if (controller.getYButton()) { 
+      magazineTalon.set(-1);
+    } else magazineTalon.set(0);
 
     // LIFTER MOVEMENT
     if (controller.getLeftBumper() && controller.getRightBumper()) { 
       if (controller.getLeftTriggerAxis() > 0.25) lifterTalon.set(0.25);
       else if (controller.getRightTriggerAxis() > 0.25) lifterTalon.set(-0.25); 
       else lifterTalon.set(0);     
-    } else lifterTalon.set(0);
+    } else {
+      if ( (controller.getLeftBumperReleased() && controller.getRightBumper()) || (controller.getRightBumperReleased() && controller.getLeftBumper()) || (controller.getLeftBumperReleased() && controller.getRightBumperReleased()) ) {
+        lifterLockValue = lifterTalon.getSensorCollection().getIntegratedSensorPosition();
+      }
+      if (Math.abs(lifterLockValue - lifterTalon.getSensorCollection().getIntegratedSensorPosition()) > 1024) {
+        lifterTalon.set(0.1 * Math.signum(lifterLockValue - lifterTalon.getSensorCollection().getIntegratedSensorPosition()));
+      }
+      
+      if (controller.getXButton()) turret.turn(-0.1);
+      else if (controller.getBButton()) turret.turn(0.1);
+      else turret.turn(0);
+
+      if(controller.getLeftTriggerAxis() > 0.25) {
+        intakeTalon.set(-controller.getLeftTriggerAxis() * 0.8);
+      } else intakeTalon.set(0);
+
+      
+      ProcessLockOn();
+      
+    } 
 
     // falcon 500 w/ talon fx max speed: 6380 RPM
 
@@ -259,6 +283,11 @@ public class Robot extends TimedRobot {
     forward *= 0.5f;
     strafe *= 0.5f;
 
+    // double magnitude = Math.sqrt(forward*forward + strafe*strafe);
+    // double angle = Math.atan2(forward, strafe) + ahrs.getAngle() % 360;
+    // forward = magnitude * Math.sin(angle);
+    // strafe = magnitude * Math.cos(angle);
+
     ChassisSpeeds notFieldRelativeSpeeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
     
     SmartDashboard.putNumber("Gyro", ahrs.getRotation2d().getDegrees());
@@ -267,13 +296,15 @@ public class Robot extends TimedRobot {
 
     SmartDashboard.putNumber("FL Module Speed", states[0].speedMetersPerSecond);
     SmartDashboard.putNumber("FL Module Angle", states[0].angle.getDegrees());
-
+    SmartDashboard.putNumber("FR Module Angle", states[1].angle.getDegrees());
+    SmartDashboard.putNumber("BR Module Angle", states[2].angle.getDegrees());
+    SmartDashboard.putNumber("BL Module Angle", states[3].angle.getDegrees());
     moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond);
     moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond);
     moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
     moduleBL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond);
     
-    ProcessLockOn();
+    
   }
 
 
@@ -348,16 +379,18 @@ public class Robot extends TimedRobot {
     if(limeY != 0) prevY = limeY;
 
     
-/*
+
     if(controller.getRightTriggerAxis() > 0.75) {
       turret.lockOn(limeX);
-      shootTalon.set(0.6);
+      //magazineTalon.set(-0.4);
+      shootTalon.set(-0.6);
       SmartDashboard.putBoolean("isLockingOn", true);
     } else {
       SmartDashboard.putBoolean("isLockingOn", false);
+      //magazineTalon.set(0);
       shootTalon.set(0);
     }
-    */
+    
 
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);
