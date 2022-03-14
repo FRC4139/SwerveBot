@@ -69,7 +69,7 @@ public class SwerveModuleController {
         
         targetAngleEntry.setDouble(targetAngle);
         currentAngleEntry.setDouble(currentAngle);
-        rotationSpeedEntry.setDouble(rotationSpeed);
+        rotationSpeedEntry.setDouble(steerFalcon.get());
     }
     public double GetOffset() {
         return offset;
