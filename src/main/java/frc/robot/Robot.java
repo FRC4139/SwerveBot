@@ -13,7 +13,6 @@ import com.ctre.phoenix.sensors.CANCoder;
 import com.ctre.phoenix.sensors.PigeonIMU;
 import com.ctre.phoenix.sensors.WPI_Pigeon2;
 import com.ctre.phoenix.sensors.WPI_PigeonIMU;
-import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
@@ -42,8 +41,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends TimedRobot {
   private static final double normalization = 0.5;
 
-  private static final double wheelBase = 0.63; // distance between centers of wheels on the same side
-  private static final double trackWidth = 0.47; // distance between centers of wheels on opposite sides
+  private static final double wheelBase = 0.5716; // distance between centers of wheels on the same side
+  private static final double trackWidth = 0.5716; // distance between centers of wheels on opposite sides
   private static final Translation2d locationFL = new Translation2d(wheelBase / 2, trackWidth / 2);
   private static final Translation2d locationFR = new Translation2d(wheelBase / 2, -trackWidth / 2);
   private static final Translation2d locationBL = new Translation2d(-wheelBase / 2, trackWidth / 2);
@@ -70,7 +69,7 @@ public class Robot extends TimedRobot {
   private double[] offsets; 
   private SwerveDriveKinematics kinematics;
   private SwerveDriveOdometry odometry;
-  private AHRS ahrs; //gyro
+
   // CALIBRATION CODE
   private int selectedModule; 
   private SwerveModuleController[] modules;
@@ -84,6 +83,7 @@ public class Robot extends TimedRobot {
   //Servo
   Servo exampleServo = new Servo(0);
   Turret turret; 
+  private DriveController driveController; 
   
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -102,7 +102,7 @@ public class Robot extends TimedRobot {
     lifterTalon = new WPI_TalonFX(37);
     lifterTalon.setNeutralMode(NeutralMode.Brake);
     intakeTalon = new WPI_TalonSRX(3);
-
+    pigeon = new WPI_Pigeon2(2); // Pigeon IMU (gyro)
   
     driveRateLimiter = new SlewRateLimiter(3);
     rotationRateLimiter = new SlewRateLimiter(3);
@@ -120,16 +120,12 @@ public class Robot extends TimedRobot {
     moduleBR = new SwerveModuleController(new WPI_TalonFX(50), new WPI_TalonFX(51), canCoderBR, offsets[2]);
     moduleBL = new SwerveModuleController(new WPI_TalonFX(52), new WPI_TalonFX(53), canCoderBL, offsets[3]);
 
+    driveController = new DriveController(moduleFL, moduleFR, moduleBR, moduleBL);
     
     
-    
-    // gyro
-    ahrs = new AHRS(SPI.Port.kMXP);
-    ahrs.calibrate();
-    ahrs.setAngleAdjustment(90);
 
     kinematics = new SwerveDriveKinematics(locationFL, locationFR, locationBR, locationBL);
-    odometry = new SwerveDriveOdometry(kinematics, ahrs.getRotation2d());
+    odometry = new SwerveDriveOdometry(kinematics, pigeon.getRotation2d());
     
     modules = new SwerveModuleController[]{moduleFL, moduleFR, moduleBR, moduleBL};
 
@@ -224,9 +220,6 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
-    //if(controller.getStartButtonPressed()) ahrs.calibrate();
-    //while(ahrs.isCalibrating()) {} // don't continue until calibrated // SUS
-
     // TURRET AND INTAKE MOVEMENT
     if (!turret.isCalibrated) {
       turret.calibrate();
@@ -238,19 +231,28 @@ public class Robot extends TimedRobot {
       magazineTalon.set(-1);
     } else magazineTalon.set(0);
 
-    // LIFTER MOVEMENT
+    // Lifter only adjustable when both bumpers are pressed
     if (controller.getLeftBumper() && controller.getRightBumper()) { 
+
       if (controller.getLeftTriggerAxis() > 0.25) lifterTalon.set(0.25);
       else if (controller.getRightTriggerAxis() > 0.25) lifterTalon.set(-0.25); 
       else lifterTalon.set(0);     
+
     } else {
-      if ( (controller.getLeftBumperReleased() && controller.getRightBumper()) || (controller.getRightBumperReleased() && controller.getLeftBumper()) || (controller.getLeftBumperReleased() && controller.getRightBumperReleased()) ) {
+
+      // Lifter locks in position when bumpers are not pressed
+      if ( (controller.getLeftBumperReleased() && controller.getRightBumper()) || (controller.getRightBumperReleased() && 
+          controller.getLeftBumper()) || (controller.getLeftBumperReleased() && controller.getRightBumperReleased()) ) {
+
         lifterLockValue = lifterTalon.getSensorCollection().getIntegratedSensorPosition();
       }
+      
+      // Active locking mechanism
       if (Math.abs(lifterLockValue - lifterTalon.getSensorCollection().getIntegratedSensorPosition()) > 1024) {
         lifterTalon.set(0.1 * Math.signum(lifterLockValue - lifterTalon.getSensorCollection().getIntegratedSensorPosition()));
       }
       
+      // Turret, intake, and vision tracking are only adjustable when both bumpers are not pressed at the same time
       if (controller.getXButton()) turret.turn(-0.1);
       else if (controller.getBButton()) turret.turn(0.1);
       else turret.turn(0);
@@ -258,21 +260,12 @@ public class Robot extends TimedRobot {
       if(controller.getLeftTriggerAxis() > 0.25) {
         intakeTalon.set(-controller.getLeftTriggerAxis() * 0.8);
       } else intakeTalon.set(0);
-
       
       ProcessLockOn();
-      
     } 
 
     // falcon 500 w/ talon fx max speed: 6380 RPM
-
-    // INTAKE
-    /*
-    if(controller.getLeftTriggerAxis() > 0.25) {
-      intakeTalon.set(-controller.getLeftTriggerAxis() * 0.8);
-    } else intakeTalon.set(0);
-    */
-    
+   
 
     double forward = driveRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftY(), 0.2));
     double strafe = rotationRateLimiter.calculate(-MathUtil.applyDeadband(controller.getLeftX(), 0.2));
@@ -283,16 +276,13 @@ public class Robot extends TimedRobot {
     forward *= 0.5f;
     strafe *= 0.5f;
 
-    // double magnitude = Math.sqrt(forward*forward + strafe*strafe);
-    // double angle = Math.atan2(forward, strafe) + ahrs.getAngle() % 360;
-    // forward = magnitude * Math.sin(angle);
-    // strafe = magnitude * Math.cos(angle);
+    double yaw = pigeon.getYaw();
+    SmartDashboard.putNumber("Gyro", yaw);
 
     ChassisSpeeds notFieldRelativeSpeeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
-    
-    SmartDashboard.putNumber("Gyro", ahrs.getRotation2d().getDegrees());
-    ChassisSpeeds frSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation, ahrs.getRotation2d());
-    SwerveModuleState states[] = kinematics.toSwerveModuleStates(notFieldRelativeSpeeds);
+    ChassisSpeeds fieldRelativeSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation, pigeon.getRotation2d());
+
+    SwerveModuleState states[] = kinematics.toSwerveModuleStates(fieldRelativeSpeeds);
 
     SmartDashboard.putNumber("FL Module Speed", states[0].speedMetersPerSecond);
     SmartDashboard.putNumber("FL Module Angle", states[0].angle.getDegrees());
@@ -304,6 +294,7 @@ public class Robot extends TimedRobot {
     moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
     moduleBL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond);
     
+    // driveController.Drive(rotation, strafe, forward, Math.toRadians(yaw));
     
   }
 
@@ -329,8 +320,10 @@ public class Robot extends TimedRobot {
     if (controller.getYButtonPressed()) selectedModule++;
     if (controller.getAButtonPressed()) selectedModule--;
     selectedModule = selectedModule % 4;
+    double turnInput = MathUtil.applyDeadband(controller.getLeftY(), 0.2); 
 
-    if (controller.getBButton()) offsets[selectedModule] += MathUtil.applyDeadband(controller.getLeftY(), 0.25) * 0.25f;
+    if (controller.getBButton()) offsets[selectedModule] +=  turnInput * turnInput; 
+
     modules[selectedModule].SetOffset(offsets[selectedModule]);
 
     if (offsets[selectedModule] < -180) offsets[selectedModule] += 360;
@@ -341,20 +334,12 @@ public class Robot extends TimedRobot {
     
     SmartDashboard.putString("Selected Module", moduleNames[selectedModule]);
 
-    double forward = 0, strafe=0, rotation = 0; 
-    if (controller.getBButton()) {
-      forward = 0.05; 
-      strafe = 0; 
-      rotation = 0; 
-    }
+    double calibrationSpeedForward = 0.05; 
 
-    ChassisSpeeds frSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation, new Rotation2d());
-    SwerveModuleState states[] = kinematics.toSwerveModuleStates(frSpeeds);
-    //var gyroAngle = Rotation2d.fromDegrees(ahrs.getAngle());
-    moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond);
-    moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond);
-    moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
-    moduleBL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond);
+    moduleFL.SetTargetAngleAndSpeed(0, calibrationSpeedForward);
+    moduleFR.SetTargetAngleAndSpeed(0, calibrationSpeedForward);
+    moduleBR.SetTargetAngleAndSpeed(0, calibrationSpeedForward);
+    moduleBL.SetTargetAngleAndSpeed(0, calibrationSpeedForward);
     
     SmartDashboard.putNumber("cancoder FL", canCoderFL.getAbsolutePosition());
     SmartDashboard.putNumber("cancoder FR", canCoderFR.getAbsolutePosition());
@@ -366,8 +351,9 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("offset BR", moduleBR.GetOffset());
     SmartDashboard.putNumber("offset BL", moduleBL.GetOffset());
     
-    SmartDashboard.putString("offsetString", "{" + moduleFL.GetOffset() + ", " + 
-    moduleFR.GetOffset() + ", " + moduleBR.GetOffset() + ", " + moduleBL.GetOffset() + "}");
+    //print offsets to three decimal places
+    SmartDashboard.putString("offsetString", "{" + Math.round(offsets[0] * 1000.0) / 1000.0 + ", " + Math.round(offsets[1] * 1000.0) / 1000.0 
+      + ", " + Math.round(offsets[2] * 1000.0) / 1000.0 + ", " + Math.round(offsets[3] * 1000.0) / 1000.0 + "}");
   }
 
   private void ProcessLockOn() {
