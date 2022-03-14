@@ -113,10 +113,10 @@ public class Robot extends TimedRobot {
     canCoderBR = new CANCoder(40);
     canCoderBL = new CANCoder(42);
 
-    moduleFL = new SwerveModuleController(new WPI_TalonFX(54), new WPI_TalonFX(32), canCoderFL, offsets[0]);
-    moduleFR = new SwerveModuleController(new WPI_TalonFX(56), new WPI_TalonFX(57), canCoderFR, offsets[1]);
-    moduleBR = new SwerveModuleController(new WPI_TalonFX(50), new WPI_TalonFX(51), canCoderBR, offsets[2]);
-    moduleBL = new SwerveModuleController(new WPI_TalonFX(52), new WPI_TalonFX(53), canCoderBL, offsets[3]);
+    moduleFL = new SwerveModuleController("FL", new WPI_TalonFX(54), new WPI_TalonFX(32), canCoderFL, offsets[0]);
+    moduleFR = new SwerveModuleController("FR", new WPI_TalonFX(56), new WPI_TalonFX(57), canCoderFR, offsets[1]);
+    moduleBR = new SwerveModuleController("BR", new WPI_TalonFX(50), new WPI_TalonFX(51), canCoderBR, offsets[2]);
+    moduleBL = new SwerveModuleController("BL", new WPI_TalonFX(52), new WPI_TalonFX(53), canCoderBL, offsets[3]);
 
     driveController = new DriveController(moduleFL, moduleFR, moduleBR, moduleBL);
     
@@ -218,11 +218,6 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
-    // TURRET AND INTAKE MOVEMENT
-    if (!turret.isCalibrated) {
-      turret.calibrate();
-    }
-
     if (controller.getAButton()) { 
       magazineTalon.set(0.5);
     } else if (controller.getYButton()) { 
@@ -248,6 +243,8 @@ public class Robot extends TimedRobot {
       // Active locking mechanism
       if (Math.abs(lifterLockValue - lifterTalon.getSensorCollection().getIntegratedSensorPosition()) > 1024) {
         lifterTalon.set(0.1 * Math.signum(lifterLockValue - lifterTalon.getSensorCollection().getIntegratedSensorPosition()));
+      } else {
+        lifterTalon.set(0);
       }
       
       // Turret, intake, and vision tracking are only adjustable when both bumpers are not pressed at the same time
@@ -261,6 +258,10 @@ public class Robot extends TimedRobot {
       
       ProcessLockOn();
     } 
+
+    if (!turret.isCalibrated) {
+      turret.calibrate();
+    }
 
     // falcon 500 w/ talon fx max speed: 6380 RPM
    
@@ -282,17 +283,12 @@ public class Robot extends TimedRobot {
 
     SwerveModuleState states[] = kinematics.toSwerveModuleStates(notFieldRelativeSpeeds);
 
-    SmartDashboard.putNumber("FL Module Speed", states[0].speedMetersPerSecond);
-    SmartDashboard.putNumber("FL Module Angle", states[0].angle.getDegrees());
-    SmartDashboard.putNumber("FR Module Angle", states[1].angle.getDegrees());
-    SmartDashboard.putNumber("BR Module Angle", states[2].angle.getDegrees());
-    SmartDashboard.putNumber("BL Module Angle", states[3].angle.getDegrees());
     moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond);
     moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond);
     moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
     moduleBL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond);
     
-    //driveController.Drive(rotation, strafe, forward, Math.toRadians(yaw) + Math.PI / 2);
+    //driveController.Drive(rotation, strafe, forward, Math.toRadians(yaw));
     
   }
 
@@ -320,7 +316,7 @@ public class Robot extends TimedRobot {
     selectedModule = selectedModule % 4;
     double turnInput = MathUtil.applyDeadband(controller.getLeftY(), 0.2); 
 
-    if (controller.getBButton()) offsets[selectedModule] +=  turnInput * Math.abs(turnInput); 
+    if (controller.getBButton() && turnInput != 0) offsets[selectedModule] +=  turnInput * Math.abs(turnInput) + Math.signum(turnInput) * 0.1; 
 
     modules[selectedModule].SetOffset(offsets[selectedModule]);
 
@@ -343,17 +339,6 @@ public class Robot extends TimedRobot {
     moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond);
     moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
     moduleBL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond);
-    
-    
-    SmartDashboard.putNumber("cancoder FL", canCoderFL.getAbsolutePosition());
-    SmartDashboard.putNumber("cancoder FR", canCoderFR.getAbsolutePosition());
-    SmartDashboard.putNumber("cancoder BR", canCoderBR.getAbsolutePosition());
-    SmartDashboard.putNumber("cancoder BL", canCoderBL.getAbsolutePosition());
-    
-    SmartDashboard.putNumber("offset FL", moduleFL.GetOffset());
-    SmartDashboard.putNumber("offset FR", moduleFR.GetOffset());
-    SmartDashboard.putNumber("offset BR", moduleBR.GetOffset());
-    SmartDashboard.putNumber("offset BL", moduleBL.GetOffset());
     
     //print offsets to three decimal places
     SmartDashboard.putString("offsetString", "{" + Math.round(offsets[0] * 1000.0) / 1000.0 + ", " + Math.round(offsets[1] * 1000.0) / 1000.0 

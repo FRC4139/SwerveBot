@@ -1,6 +1,10 @@
 package frc.robot;
 import com.ctre.phoenix.motorcontrol.can.*;
 import com.ctre.phoenix.sensors.CANCoder;
+
+import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class SwerveModuleController {
@@ -10,21 +14,31 @@ public class SwerveModuleController {
     private double targetAngle; // 0 - 360
     private double rotationSpeed, driveSpeed; 
     private double offset = 0; 
-    
+    private String name; 
+
     private static final float PROPORTION_ROTATION_CONSTANT = 0.0015f; 
     private static final float MINIMUM_ROTATION_SPEED = 0.03f;
+
+    private NetworkTableEntry targetAngleEntry, currentAngleEntry, rotationSpeedEntry, offsetEntry;
+
     public SwerveModuleController(WPI_TalonFX steer, WPI_TalonFX drive) { 
         steerFalcon = steer;
         driveFalcon = drive; 
     }
-    public SwerveModuleController(WPI_TalonFX steer, WPI_TalonFX drive, CANCoder iCoder, double Ioffset) { 
+    public SwerveModuleController(String nameIn, WPI_TalonFX steer, WPI_TalonFX drive, CANCoder iCoder, double Ioffset) { 
         steerFalcon = steer;
         driveFalcon = drive; 
         offset = Ioffset; 
         encoder = iCoder;
+        name = nameIn;
+        targetAngleEntry = Shuffleboard.getTab("Swerve").add(name + " Target Angle", 0).getEntry();
+        currentAngleEntry = Shuffleboard.getTab("Swerve").add(name + " Current Angle", 0).getEntry();
+        rotationSpeedEntry = Shuffleboard.getTab("Swerve").add(name + " Rotation Speed", 0).getEntry();
+        offsetEntry = Shuffleboard.getTab("Swerve").add(name + " Offset", 0).getEntry();
     }
     public void SetOffset(double newOffset) {
         offset = newOffset;
+        offsetEntry.setDouble(offset);
     }
     public void SetTargetAngleAndSpeed(double angle, double speed) { 
         
@@ -52,7 +66,10 @@ public class SwerveModuleController {
         } else {
             steerFalcon.set(rotationSpeed * PROPORTION_ROTATION_CONSTANT - MINIMUM_ROTATION_SPEED);
         }
-                
+        
+        targetAngleEntry.setDouble(targetAngle);
+        currentAngleEntry.setDouble(currentAngle);
+        rotationSpeedEntry.setDouble(rotationSpeed);
     }
     public double GetOffset() {
         return offset;
