@@ -4,19 +4,17 @@
 
 package frc.robot;
 
-import javax.xml.crypto.dsig.keyinfo.KeyValue;
 
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import com.ctre.phoenix.sensors.CANCoder;
-import com.ctre.phoenix.sensors.PigeonIMU;
-import com.ctre.phoenix.sensors.WPI_Pigeon2;
-import com.ctre.phoenix.sensors.WPI_PigeonIMU;
+import com.ctre.phoenix.sensors.*;
+
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
-import edu.wpi.first.math.geometry.Rotation2d;
+
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -25,7 +23,7 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.wpilibj.SPI;
+
 import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
@@ -39,7 +37,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  * project.
  */
 public class Robot extends TimedRobot {
-  private static final double normalization = 0.5;
+  
 
   private static final double wheelBase = 0.5716; // distance between centers of wheels on the same side
   private static final double trackWidth = 0.5716; // distance between centers of wheels on opposite sides
@@ -109,7 +107,7 @@ public class Robot extends TimedRobot {
 
     // KEEP THESE BETWEEN -180 and 180 ??? TEST THIS
     //                     FL   FR   BR   BL
-    offsets = new double[]{-76.60070328867691, -129.5758834784851, 29.792256410854513, -59.42133151739842};
+    offsets = new double[]{-38.487, -129.576, -179.745, -43.518};
     canCoderFL = new CANCoder(44);
     canCoderFR = new CANCoder(46);
     canCoderBR = new CANCoder(40);
@@ -282,7 +280,7 @@ public class Robot extends TimedRobot {
     ChassisSpeeds notFieldRelativeSpeeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
     ChassisSpeeds fieldRelativeSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation, pigeon.getRotation2d());
 
-    SwerveModuleState states[] = kinematics.toSwerveModuleStates(fieldRelativeSpeeds);
+    SwerveModuleState states[] = kinematics.toSwerveModuleStates(notFieldRelativeSpeeds);
 
     SmartDashboard.putNumber("FL Module Speed", states[0].speedMetersPerSecond);
     SmartDashboard.putNumber("FL Module Angle", states[0].angle.getDegrees());
@@ -294,7 +292,7 @@ public class Robot extends TimedRobot {
     moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
     moduleBL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond);
     
-    // driveController.Drive(rotation, strafe, forward, Math.toRadians(yaw));
+    //driveController.Drive(rotation, strafe, forward, Math.toRadians(yaw) + Math.PI / 2);
     
   }
 
@@ -322,7 +320,7 @@ public class Robot extends TimedRobot {
     selectedModule = selectedModule % 4;
     double turnInput = MathUtil.applyDeadband(controller.getLeftY(), 0.2); 
 
-    if (controller.getBButton()) offsets[selectedModule] +=  turnInput * turnInput; 
+    if (controller.getBButton()) offsets[selectedModule] +=  turnInput * Math.abs(turnInput); 
 
     modules[selectedModule].SetOffset(offsets[selectedModule]);
 
@@ -334,12 +332,18 @@ public class Robot extends TimedRobot {
     
     SmartDashboard.putString("Selected Module", moduleNames[selectedModule]);
 
-    double calibrationSpeedForward = 0.05; 
+    double forward = 0.05;
+    double strafe = 0; 
+    double rotation = 0; 
+    ChassisSpeeds notFieldRelativeSpeeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
+    
+    SwerveModuleState states[] = kinematics.toSwerveModuleStates(notFieldRelativeSpeeds);
 
-    moduleFL.SetTargetAngleAndSpeed(0, calibrationSpeedForward);
-    moduleFR.SetTargetAngleAndSpeed(0, calibrationSpeedForward);
-    moduleBR.SetTargetAngleAndSpeed(0, calibrationSpeedForward);
-    moduleBL.SetTargetAngleAndSpeed(0, calibrationSpeedForward);
+    moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond);
+    moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond);
+    moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
+    moduleBL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond);
+    
     
     SmartDashboard.putNumber("cancoder FL", canCoderFL.getAbsolutePosition());
     SmartDashboard.putNumber("cancoder FR", canCoderFR.getAbsolutePosition());

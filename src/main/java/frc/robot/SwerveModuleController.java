@@ -11,8 +11,8 @@ public class SwerveModuleController {
     private double rotationSpeed, driveSpeed; 
     private double offset = 0; 
     
-    private static final float PROPORTION_ROTATION_CONSTANT = 0.0020f; 
-    private static final float MINIMUM_ROTATION_SPEED = 0.025f;
+    private static final float PROPORTION_ROTATION_CONSTANT = 0.0015f; 
+    private static final float MINIMUM_ROTATION_SPEED = 0.03f;
     public SwerveModuleController(WPI_TalonFX steer, WPI_TalonFX drive) { 
         steerFalcon = steer;
         driveFalcon = drive; 
