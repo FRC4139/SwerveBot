@@ -17,6 +17,8 @@ public class AutonomousHandler {
     private int stage = -2; 
 
     // STAGES
+    // -2: calibrate turret
+    // -1: move turret to general direction of target
     // 0: back up out of tarmac until distance from target is reached
     // 1: move magazine forward at max speed to shoot first ball
     // 2: turn intake on and back up out of tarmac until distance to intake second ball is reached
@@ -94,6 +96,72 @@ public class AutonomousHandler {
 
     }
 
+    private double timeCheckpoint = 0; 
+
+    public void UpdateTimedBackup(double currentTime)  {
+        if (stage <= 4 && stage >= 0) robot.ProcessLockOnAutonomous(); 
+        else robot.shootTalon.set(0); 
+
+        if (stage == -2) {
+            if (!robot.turret.isCalibrated) {
+                robot.turret.calibrate();
+            } else {
+                stage++; 
+            }
+        } else if (stage == -1) {
+            if (robot.turret.getTurretPosition() < 40000) {
+                robot.turret.turn(0.2);
+            } else {
+                stage++; 
+                robot.turret.turn(0);
+                timeCheckpoint = currentTime; 
+            }
+        } else if (stage == 0)  {
+            if (currentTime - timeCheckpoint < 1) {
+                drive(0.1, 0, 0);
+            } else {
+                stage++; 
+                timeCheckpoint = currentTime;
+            }
+        } else if (stage == 1) { 
+            if (currentTime - timeCheckpoint < 1) {
+                drive(0,0,0); 
+                robot.magazineTalon.set(-1);
+            } else {
+                stage++; 
+                timeCheckpoint = currentTime;
+            }
+        } else if (stage == 2) {
+            if (currentTime - timeCheckpoint < 1) {
+                drive(0.2,0,0);
+                robot.intakeTalon.set(-0.8);
+            } else {
+                stage++; 
+                timeCheckpoint = currentTime;
+            }
+        } else if (stage == 3) { 
+            if (currentTime - timeCheckpoint < 3) {
+                drive(0,0,0); 
+                robot.intakeTalon.set(-0.8);
+            } else {
+                stage++; 
+                timeCheckpoint = currentTime;
+            }
+        } else if (stage == 4) {
+            if (currentTime - timeCheckpoint < 1) {
+                drive(0,0,0); 
+                robot.intakeTalon.set(0);
+                robot.magazineTalon.set(-1);
+            } else {
+                stage++; 
+                timeCheckpoint = currentTime;
+            }
+        } else {
+            drive(0,0,0); 
+            robot.intakeTalon.set(0);
+            robot.magazineTalon.set(0);
+        }
+    }
     private void drive(double forward, double strafe, double rotation) {
         ChassisSpeeds notFieldRelativeSpeeds = new ChassisSpeeds(forward, strafe, rotation);
 
