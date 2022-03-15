@@ -26,6 +26,7 @@ import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -83,6 +84,9 @@ public class Robot extends TimedRobot {
   private DriveController driveController; 
   private AutonomousHandler autonomousHandler;
   Timer time; 
+
+  private boolean fieldOriented;
+  private double gyroOffset = 0; 
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -107,7 +111,7 @@ public class Robot extends TimedRobot {
 
     // KEEP THESE BETWEEN -180 and 180 ??? TEST THIS
     //                     FL   FR   BR   BL
-    offsets = new double[]{-38.487, -129.576, -179.745, -43.518};
+    offsets = new double[]{-60.008, -114.44, 167.018, -14.128};
     canCoderFL = new CANCoder(44);
     canCoderFR = new CANCoder(46);
     canCoderBR = new CANCoder(40);
@@ -135,6 +139,8 @@ public class Robot extends TimedRobot {
 
     limelightTable.getEntry("ledMode").setNumber(3); // always on
     limelightTable.getEntry("camMode").setNumber(0); // vision processor (not driver camera)
+
+    fieldOriented = true;
   }
 
   /**
@@ -206,7 +212,9 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-
+    if(controller.getBackButtonPressed())
+      fieldOriented = !fieldOriented;
+    
     if (controller.getAButton()) { 
       magazineTalon.set(0.5);
     } else if (controller.getYButton()) { 
@@ -265,13 +273,18 @@ public class Robot extends TimedRobot {
     strafe *= 0.5f;
 
     double yaw = pigeon.getYaw();
+    if (controller.getRightStickButtonReleased()) pigeon.setYaw(0); 
     SmartDashboard.putNumber("Gyro", yaw);
 
     ChassisSpeeds notFieldRelativeSpeeds = new ChassisSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation);
     ChassisSpeeds fieldRelativeSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(forward * MAX_SPEED_MS, strafe * MAX_SPEED_MS, rotation, pigeon.getRotation2d());
 
-    SwerveModuleState states[] = kinematics.toSwerveModuleStates(notFieldRelativeSpeeds);
-
+    SwerveModuleState states[];
+    if(fieldOriented)
+      states = kinematics.toSwerveModuleStates(fieldRelativeSpeeds);
+    else
+      states = kinematics.toSwerveModuleStates(notFieldRelativeSpeeds);
+    SmartDashboard.putBoolean("Field Relative?", fieldOriented);
     moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond);
     moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond);
     moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
@@ -332,22 +345,39 @@ public class Robot extends TimedRobot {
     //print offsets to three decimal places
     SmartDashboard.putString("offsetString", "{" + Math.round(offsets[0] * 1000.0) / 1000.0 + ", " + Math.round(offsets[1] * 1000.0) / 1000.0 
       + ", " + Math.round(offsets[2] * 1000.0) / 1000.0 + ", " + Math.round(offsets[3] * 1000.0) / 1000.0 + "}");
-  }
+  
+    double limeX = tx.getDouble(0.0);
+    double limeY = ty.getDouble(0.0);
+    double limeArea = ta.getDouble(0.0);
+    double distance = Parallax.getDistanceToTarget(limeX, limeY);
+    SmartDashboard.putNumber("Distance", distance);
+    if(limeX != 0) prevX = limeX;
+    if(limeY != 0) prevY = limeY;
 
+    }
+  private double[] distances = new double[]{0,0,0,0,0,0,0,0,0};
   private void ProcessLockOn() {
     double limeX = tx.getDouble(0.0);
     double limeY = ty.getDouble(0.0);
     double limeArea = ta.getDouble(0.0);
-
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
+    double distance = Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY));
+    SmartDashboard.putNumber("Distance", distance);
+    
 
+    for (int i = 0; i < 8; i++) distances[i] = distances[i+1];
+    distances[8] = distance; 
     
 
     if(controller.getRightTriggerAxis() > 0.75) {
       turret.lockOn(limeX);
       //magazineTalon.set(-0.4);
-      shootTalon.set(-0.6);
+      double speed = -0.32 - (medianCal(9, distances) * 0.0374);
+      if (speed < -1.0) speed = -1.0; 
+      
+      shootTalon.set(speed);
+      SmartDashboard.putNumber("shooter speed", shootTalon.get()); 
       SmartDashboard.putBoolean("isLockingOn", true);
     } else {
       SmartDashboard.putBoolean("isLockingOn", false);
@@ -359,7 +389,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);
     SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
-    SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
+    //SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
 
   }
 
@@ -367,18 +397,18 @@ public class Robot extends TimedRobot {
     double limeX = tx.getDouble(0.0);
     double limeY = ty.getDouble(0.0);
     double limeArea = ta.getDouble(0.0);
-
+    double distance = Parallax.getDistanceToTarget(limeX, limeY);
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
     
     if (limeX != 0 && limeY != 0) {
       turret.lockOn(limeX);
+      shootTalon.set(-0.338 - distance * 0.0374);
     } else {
-      turret.searchForTarget(); 
+      turret.searchForTarget();
+      shootTalon.set(0); 
     }
-    
-
-    shootTalon.set(-0.6);
+        
 
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);
@@ -386,4 +416,21 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
 
   }
+  private double medianCal(int n,double in[])
+    {
+      double m=0;	
+      
+      if(n%2==1)
+      {
+        m=in[((n+1)/2)-1];
+        
+      }
+      else
+      {
+        m=(in[n/2-1]+in[n/2])/2;
+        
+      }
+    return m;
+      
+    }
 }

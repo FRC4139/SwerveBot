@@ -3,6 +3,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class AutonomousHandler {
 
@@ -12,7 +13,7 @@ public class AutonomousHandler {
     private double secondTargetReachedTime = 0;
     private final double TARGET_DISTANCE_FIRST_BALL = 6.5; // feet 
     private final double TARGET_DISTANCE_SECOND_BALL = 9; // feet
-    private final double PROPORTION_DRIVE_CONSTANT = 1.0 / 15.0; 
+    private final double PROPORTION_DRIVE_CONSTANT = -1.0 / 15.0; 
     private int stage = -2; 
 
     // STAGES
@@ -37,7 +38,7 @@ public class AutonomousHandler {
                 stage++; 
             }
         } else if (stage == -1) {
-            if (robot.turret.getTurretPosition() < 40000) {
+            if (robot.turret.getTurretPosition() < 100000) {
                 robot.turret.turn(0.2);
             } else {
                 stage++; 
@@ -89,7 +90,7 @@ public class AutonomousHandler {
             robot.magazineTalon.set(0);
         }
 
-
+        SmartDashboard.putNumber("Auto Stage: ", stage); 
 
     }
 

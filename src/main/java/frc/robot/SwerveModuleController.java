@@ -16,8 +16,8 @@ public class SwerveModuleController {
     private double offset = 0; 
     private String name; 
 
-    private static final float PROPORTION_ROTATION_CONSTANT = 0.0015f; 
-    private static final float MINIMUM_ROTATION_SPEED = 0.03f;
+    private static final float PROPORTION_ROTATION_CONSTANT = 0.002f; 
+    private static final float MINIMUM_ROTATION_SPEED = 0.055f;
 
     private NetworkTableEntry targetAngleEntry, currentAngleEntry, rotationSpeedEntry, offsetEntry;
 
@@ -33,7 +33,7 @@ public class SwerveModuleController {
         name = nameIn;
         targetAngleEntry = Shuffleboard.getTab("Swerve").add(name + " Target Angle", 0).getEntry();
         currentAngleEntry = Shuffleboard.getTab("Swerve").add(name + " Current Angle", 0).getEntry();
-        rotationSpeedEntry = Shuffleboard.getTab("Swerve").add(name + " Rotation Speed", 0).getEntry();
+        rotationSpeedEntry = Shuffleboard.getTab("Swerve").add(name + " Rot. Speed", 0).getEntry();
         offsetEntry = Shuffleboard.getTab("Swerve").add(name + " Offset", 0).getEntry();
     }
     public void SetOffset(double newOffset) {
@@ -56,16 +56,22 @@ public class SwerveModuleController {
         // if we want to spin from current 270 to target 260, cw (- = cw)
         
         rotationSpeed = targetAngle - currentAngle;
+        
         if (Math.abs(rotationSpeed)>180) {
             rotationSpeed -= 360 * Integer.signum((int)rotationSpeed);
         }
 
         driveFalcon.set(driveSpeed);
-        if (rotationSpeed > 0) {
-            steerFalcon.set(rotationSpeed * PROPORTION_ROTATION_CONSTANT + MINIMUM_ROTATION_SPEED);
+        if (Math.abs(targetAngle - currentAngle) > 1.5) {
+            if (rotationSpeed > 0) {
+                steerFalcon.set(rotationSpeed * PROPORTION_ROTATION_CONSTANT + MINIMUM_ROTATION_SPEED);
+            } else {
+                steerFalcon.set(rotationSpeed * PROPORTION_ROTATION_CONSTANT - MINIMUM_ROTATION_SPEED);
+            }
         } else {
-            steerFalcon.set(rotationSpeed * PROPORTION_ROTATION_CONSTANT - MINIMUM_ROTATION_SPEED);
+            steerFalcon.set(0);
         }
+        
         
         targetAngleEntry.setDouble(targetAngle);
         currentAngleEntry.setDouble(currentAngle);
