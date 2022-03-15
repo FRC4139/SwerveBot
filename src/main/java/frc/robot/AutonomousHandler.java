@@ -13,7 +13,7 @@ public class AutonomousHandler {
     private final double TARGET_DISTANCE_FIRST_BALL = 6.5; // feet 
     private final double TARGET_DISTANCE_SECOND_BALL = 9; // feet
     private final double PROPORTION_DRIVE_CONSTANT = 1 / 15; 
-    private int stage = -1; 
+    private int stage = -2; 
 
     // STAGES
     // 0: back up out of tarmac until distance from target is reached
