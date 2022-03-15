@@ -4,13 +4,11 @@
 
 package frc.robot;
 
-
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import com.ctre.phoenix.sensors.CANCoder;
 import com.ctre.phoenix.sensors.*;
-
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
@@ -26,6 +24,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 
 import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -53,15 +52,15 @@ public class Robot extends TimedRobot {
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
   private XboxController controller;
-  private WPI_TalonFX shootTalon, magazineTalon, lifterTalon; 
+  public WPI_TalonFX shootTalon, magazineTalon, lifterTalon; 
   private SlewRateLimiter driveRateLimiter;
   private SlewRateLimiter rotationRateLimiter;
 
-  private WPI_TalonSRX intakeTalon;
+  public WPI_TalonSRX intakeTalon;
 
   private WPI_Pigeon2 pigeon;
 
-  private SwerveModuleController moduleFL, moduleFR, moduleBR, moduleBL;
+  public SwerveModuleController moduleFL, moduleFR, moduleBR, moduleBL;
 
   private CANCoder canCoderFL, canCoderFR, canCoderBR, canCoderBL;
   private double[] offsets; 
@@ -82,7 +81,8 @@ public class Robot extends TimedRobot {
   Servo exampleServo = new Servo(0);
   Turret turret; 
   private DriveController driveController; 
-  
+  private AutonomousHandler autonomousHandler;
+  Timer time; 
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -120,11 +120,12 @@ public class Robot extends TimedRobot {
 
     driveController = new DriveController(moduleFL, moduleFR, moduleBR, moduleBL);
     
-    
+    time = new Timer();
 
     kinematics = new SwerveDriveKinematics(locationFL, locationFR, locationBR, locationBL);
     odometry = new SwerveDriveOdometry(kinematics, pigeon.getRotation2d());
-    
+    autonomousHandler = new AutonomousHandler(kinematics, this); 
+
     modules = new SwerveModuleController[]{moduleFL, moduleFR, moduleBR, moduleBL};
 
     limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
@@ -179,7 +180,9 @@ public class Robot extends TimedRobot {
         break;
     }
     */
-
+    if (time.get() == 0) {
+      time.start();
+    }
     
     double limeX = tx.getDouble(0.0);
     double limeY = ty.getDouble(0.0);
@@ -188,21 +191,7 @@ public class Robot extends TimedRobot {
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
 
-    if(limeArea > 15) {
-      ChassisSpeeds speeds = new ChassisSpeeds(0, 0, prevX < 0 ? -(Math.PI / 12) : (Math.PI / 12));
-      SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
-      moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond);
-      moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond);
-      moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
-      moduleBL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond);
-    }
-
-    if(controller.getYButtonPressed()) {
-      turret.lockOn(limeX);
-      SmartDashboard.putBoolean("isLockingOn", true);
-    } else {
-      SmartDashboard.putBoolean("isLockingOn", false);
-    }
+    autonomousHandler.Update(time.get(), Parallax.getDistanceToTarget(Math.toRadians(prevX), Math.toRadians(prevY)));
 
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);
@@ -371,13 +360,30 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Limelight Y", prevY);
     SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
     SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
-    // if(limeArea > 15 && false) {
-    //   ChassisSpeeds speeds = new ChassisSpeeds(0, 0, prevX < 0 ? -(Math.PI / 12) : (Math.PI / 12));
-    //   SwerveModuleState states[] = kinematics.toSwerveModuleStates(speeds);
-    //   moduleFL.SetTargetAngleAndSpeed(states[0].angle.getDegrees(), states[0].speedMetersPerSecond);
-    //   moduleFR.SetTargetAngleAndSpeed(states[1].angle.getDegrees(), states[1].speedMetersPerSecond);
-    //   moduleBR.SetTargetAngleAndSpeed(states[2].angle.getDegrees(), states[2].speedMetersPerSecond);
-    //   moduleBL.SetTargetAngleAndSpeed(states[3].angle.getDegrees(), states[3].speedMetersPerSecond);
-    // }
+
+  }
+
+  public void ProcessLockOnAutonomous() {
+    double limeX = tx.getDouble(0.0);
+    double limeY = ty.getDouble(0.0);
+    double limeArea = ta.getDouble(0.0);
+
+    if(limeX != 0) prevX = limeX;
+    if(limeY != 0) prevY = limeY;
+    
+    if (limeX != 0 && limeY != 0) {
+      turret.lockOn(limeX);
+    } else {
+      turret.searchForTarget(); 
+    }
+    
+
+    shootTalon.set(-0.6);
+
+    SmartDashboard.putNumber("Limelight X", prevX);
+    SmartDashboard.putNumber("Limelight Y", prevY);
+    SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
+    SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
+
   }
 }

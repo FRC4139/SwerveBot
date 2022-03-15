@@ -9,8 +9,11 @@ public class Turret {
     private WPI_TalonFX turretTalon;
     private DigitalInput limitSwitchInput; 
     public boolean isCalibrated; 
+    private boolean searchDirectionPositive; 
+
     private static final int MAX_SENSOR_POSITION = 185000;
     public static final double MAX_SPEED = 0.2;
+    
     public Turret(int tf, int ls) { 
         turretTalon = new WPI_TalonFX(tf); 
         limitSwitchInput = new DigitalInput(ls);
@@ -34,10 +37,12 @@ public class Turret {
         if (turretTalon.getSensorCollection().getIntegratedSensorPosition() > MAX_SENSOR_POSITION) {
             // only want negative
             speed = Math.min(speed, 0);
+            searchDirectionPositive = false;
         } 
-        if (!limitSwitchInput.get() || turretTalon.getSensorCollection().getIntegratedSensorPosition() < 1000) {
+        if (!limitSwitchInput.get() || turretTalon.getSensorCollection().getIntegratedSensorPosition() < 5000) {
             // only want positive
             speed = Math.max(speed, 0);
+            searchDirectionPositive = true;
         }
         if (speed > MAX_SPEED) speed = MAX_SPEED;
         if (speed < -MAX_SPEED) speed = -MAX_SPEED; 
@@ -49,6 +54,35 @@ public class Turret {
     public void lockOn(double tx) {
         
         turn(MAX_SPEED*tx / 20);
+    }
+
+    public void searchForTarget() {
+        if (searchDirectionPositive) {
+            turn(MAX_SPEED);
+        } else {
+            turn(-MAX_SPEED);
+        }
+        if (turretTalon.getSensorCollection().getIntegratedSensorPosition() > MAX_SENSOR_POSITION) {
+            searchDirectionPositive = false;
+        } else if (turretTalon.getSensorCollection().getIntegratedSensorPosition() < 5000) {
+            searchDirectionPositive = true;
+        }
+    }
+
+    public void turnToTargetSensorPosition(int targetSensorPosition) { 
+        double currentSensorPosition = turretTalon.getSensorCollection().getIntegratedSensorPosition();
+        double error = targetSensorPosition - currentSensorPosition;
+        if (error > 1000) {
+            turn(MAX_SPEED);
+        } else if (error < 1000) {
+            turn(-MAX_SPEED);
+        } else {
+            turn(0);
+        }
+    }
+
+    public double getTurretPosition() {
+        return turretTalon.getSensorCollection().getIntegratedSensorPosition();
     }
     
 }
