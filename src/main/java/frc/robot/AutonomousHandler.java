@@ -40,7 +40,7 @@ public class AutonomousHandler {
                 stage++; 
             }
         } else if (stage == -1) {
-            if (robot.turret.getTurretPosition() < 100000) {
+            if (robot.turret.getTurretPosition() < 120000) {
                 robot.turret.turn(0.2);
             } else {
                 stage++; 
@@ -55,10 +55,10 @@ public class AutonomousHandler {
                 firstTargetReachedTime = currentTime; 
             }
         } else if (stage == 1) {
-            if (currentTime - firstTargetReachedTime < 1) {
+        if (currentTime - firstTargetReachedTime < 6 && currentTime - firstTargetReachedTime > 5) {
                 drive(0,0,0); 
                 robot.magazineTalon.set(-1);
-            } else { 
+            } else if (currentTime - firstTargetReachedTime > 6) { 
                 
                 stage++; 
             }

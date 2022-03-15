@@ -196,9 +196,9 @@ public class Robot extends TimedRobot {
 
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
-
-    autonomousHandler.Update(time.get(), Parallax.getDistanceToTarget(Math.toRadians(prevX), Math.toRadians(prevY)));
-
+    double dist = Parallax.getDistanceToTarget(Math.toRadians(prevX), Math.toRadians(prevY));
+    if (dist < 15) autonomousHandler.Update(time.get(), dist);
+    //autonomousHandler.UpdateTimedBackup(time.get());
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);
     SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
@@ -397,7 +397,7 @@ public class Robot extends TimedRobot {
     double limeX = tx.getDouble(0.0);
     double limeY = ty.getDouble(0.0);
     double limeArea = ta.getDouble(0.0);
-    double distance = Parallax.getDistanceToTarget(limeX, limeY);
+    double distance = Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY));
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
     
