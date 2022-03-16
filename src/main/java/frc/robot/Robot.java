@@ -83,7 +83,10 @@ public class Robot extends TimedRobot {
   Turret turret; 
   private DriveController driveController; 
   private AutonomousHandler autonomousHandler;
-  Timer time; 
+  private Timer time; 
+  private Timer intakeDoubleClickTimer;
+  private Timer intakeInOutTimer;
+
 
   private boolean fieldOriented;
   private double gyroOffset = 0; 
@@ -228,7 +231,7 @@ public class Robot extends TimedRobot {
       else if (controller.getRightTriggerAxis() > 0.25) lifterTalon.set(-0.25); 
       else lifterTalon.set(0);     
 
-    } else {
+    } else { // Turret, intake, and vision tracking are only adjustable when both bumpers are not pressed at the same time
 
       // Lifter locks in position when bumpers are not pressed
       if ( (controller.getLeftBumperReleased() && controller.getRightBumper()) || (controller.getRightBumperReleased() && 
@@ -244,14 +247,38 @@ public class Robot extends TimedRobot {
         lifterTalon.set(0);
       }
       
-      // Turret, intake, and vision tracking are only adjustable when both bumpers are not pressed at the same time
-      if (controller.getXButton()) turret.turn(-0.1);
-      else if (controller.getBButton()) turret.turn(0.1);
+      // Control turret
+      if (controller.getXButton()) turret.turn(-1 * Turret.MAX_SPEED);
+      else if (controller.getBButton()) turret.turn(Turret.MAX_SPEED);
       else turret.turn(0);
 
-      if(controller.getLeftTriggerAxis() > 0.25) {
-        intakeTalon.set(-controller.getLeftTriggerAxis() * 0.8);
-      } else intakeTalon.set(0);
+      // Control intake
+      if (intakeInOutTimer.get() == 0 || intakeInOutTimer >= 1.5) {
+        if(controller.getLeftTriggerAxis() > 0.25) {
+          intakeTalon.set(controller.getLeftTriggerAxis() * -0.8);
+        } else intakeTalon.set(0);
+
+        // Double clicking left bumper performs in and out maneuver
+        if (controller.getLeftBumperReleased()) {
+          if (intakeDoubleClickTimer.get() == 0 || intakeDoubleClickTimer >= 0.25) {
+            intakeDoubleClickTimer.reset();
+            intakeDoubleClickTimer.start(); 
+          } else {
+            intakeInOutTimer.reset();
+            intakeInOutTimer.start();
+          }
+        }
+      } else {
+        // In and out maneuver
+        if (intakeInOutTimer.get() <= 0.5) {
+          // In
+          intakeTalon.set(0.5);
+        } else {
+          // Out
+          intakeTalon.set(-1);
+        }
+      }
+      
       
       ProcessLockOn();
     } 

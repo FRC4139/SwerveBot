@@ -41,7 +41,11 @@ public class SwerveModuleController {
         offsetEntry.setDouble(offset);
     }
     public void SetTargetAngleAndSpeed(double angle, double speed) { 
-        
+        if (angle == 0 && speed == 0) { 
+            steerFalcon.set(0); 
+            driveFalcon.set(0);
+            return;
+        }
         double currentAngle = encoder.getAbsolutePosition() + offset; 
 
         targetAngle = angle;

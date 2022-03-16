@@ -52,8 +52,12 @@ public class Turret {
     }
 
     public void lockOn(double tx) {
+        if (Math.abs(tx) >= 1) {
+            turn(MAX_SPEED*tx / 20 + Math.signum(tx) * 0.05);
+        } else {
+            turn(0);
+        }
         
-        turn(MAX_SPEED*tx / 20);
     }
 
     public void searchForTarget() {
