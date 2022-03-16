@@ -336,6 +336,8 @@ public class Robot extends TimedRobot {
 
   /** This function is called periodically during test mode. */
   
+  private double[] distances = new double[]{0,0,0,0,0,0,0,0,0};
+
   @Override
   public void testPeriodic() {
     
@@ -376,26 +378,23 @@ public class Robot extends TimedRobot {
     double limeX = tx.getDouble(0.0);
     double limeY = ty.getDouble(0.0);
     double limeArea = ta.getDouble(0.0);
-    double distance = Parallax.getDistanceToTarget(limeX, limeY);
-    SmartDashboard.putNumber("Distance", distance);
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
+    double distance = Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY));    
 
-    }
-  private double[] distances = new double[]{0,0,0,0,0,0,0,0,0};
+  }
+ 
+
   private void ProcessLockOn() {
     double limeX = tx.getDouble(0.0);
     double limeY = ty.getDouble(0.0);
     double limeArea = ta.getDouble(0.0);
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
-    double distance = Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY));
-    SmartDashboard.putNumber("Distance", distance);
-    
+    double distance = Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY));    
 
     for (int i = 0; i < 8; i++) distances[i] = distances[i+1];
-    distances[8] = distance; 
-    
+    distances[8] = distance;     
 
     if(controller.getRightTriggerAxis() > 0.75) {
       turret.lockOn(limeX);
@@ -406,6 +405,7 @@ public class Robot extends TimedRobot {
       shootTalon.set(speed);
       SmartDashboard.putNumber("shooter speed", shootTalon.get()); 
       SmartDashboard.putBoolean("isLockingOn", true);
+
     } else {
       SmartDashboard.putBoolean("isLockingOn", false);
       //magazineTalon.set(0);
@@ -416,7 +416,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);
     SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
-    //SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
+    SmartDashboard.putNumber("Distance", (medianCal(9, distances));
+
 
   }
 
@@ -427,10 +428,16 @@ public class Robot extends TimedRobot {
     double distance = Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY));
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
-    
+
+    for (int i = 0; i < 8; i++) distances[i] = distances[i+1];
+    distances[8] = distance; 
+
     if (limeX != 0 && limeY != 0) {
       turret.lockOn(limeX);
-      shootTalon.set(-0.338 - distance * 0.0374);
+      double speed = -0.32 - (medianCal(9, distances) * 0.0374);
+      if (speed < -1.0) speed = -1.0; 
+      
+      shootTalon.set(speed);
     } else {
       turret.searchForTarget();
       shootTalon.set(0); 
@@ -440,24 +447,24 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);
     SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
-    SmartDashboard.putNumber("Distance", Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY)));
+    SmartDashboard.putNumber("Distance", (medianCal(9, distances));
 
   }
-  private double medianCal(int n,double in[])
+
+  private double medianCal(int n,double in[]) {
+    double m=0;	
+    
+    if(n%2==1)
     {
-      double m=0;	
-      
-      if(n%2==1)
-      {
-        m=in[((n+1)/2)-1];
-        
-      }
-      else
-      {
-        m=(in[n/2-1]+in[n/2])/2;
-        
-      }
-    return m;
+      m=in[((n+1)/2)-1];
       
     }
+    else
+    {
+      m=(in[n/2-1]+in[n/2])/2;
+      
+    }
+  return m;
+    
+  }
 }

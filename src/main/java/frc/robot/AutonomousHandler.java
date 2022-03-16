@@ -30,6 +30,11 @@ public class AutonomousHandler {
     }
 
     public void Update(double currentTime, double perceivedDistance) {
+        SmartDashboard.put("Autonomous Time", currentTime);
+        SmartDashboard.put("First Target Reached Time", firstTargetReachedTime);
+        SmartDashboard.put("Second Target Reached Time", secondTargetReachedTime);
+        SmartDashboard.putNumber("Auto Stage: ", stage); 
+
         if (stage <= 4 && stage >= 0) robot.ProcessLockOnAutonomous(); 
         else robot.shootTalon.set(0); 
 
@@ -55,7 +60,12 @@ public class AutonomousHandler {
                 firstTargetReachedTime = currentTime; 
             }
         } else if (stage == 1) {
-        if (currentTime - firstTargetReachedTime < 6 && currentTime - firstTargetReachedTime > 5) {
+            if (currentTime - firstTargetReachedTime < 5) {
+                // WAITING FOR REV UP
+                drive(0,0,0);
+                
+            } else if (currentTime - firstTargetReachedTime < 6) {
+                // SHOOTING FIRST BALL
                 drive(0,0,0); 
                 robot.magazineTalon.set(-1);
             } else if (currentTime - firstTargetReachedTime > 6) { 
@@ -92,7 +102,7 @@ public class AutonomousHandler {
             robot.magazineTalon.set(0);
         }
 
-        SmartDashboard.putNumber("Auto Stage: ", stage); 
+        
 
     }
 
