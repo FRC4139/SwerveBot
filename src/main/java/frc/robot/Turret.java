@@ -47,13 +47,14 @@ public class Turret {
         if (speed > MAX_SPEED) speed = MAX_SPEED;
         if (speed < -MAX_SPEED) speed = -MAX_SPEED; 
         turretTalon.set(speed);
-        //SmartDashboard.putNumber("output speed", speed);
-        //SmartDashboard.putNumber("turret rotation raw", turretTalon.getSensorCollection().getIntegratedSensorPosition());
+        SmartDashboard.putNumber("turret output speed", speed);
+        SmartDashboard.putNumber("turret rotation raw", turretTalon.getSensorCollection().getIntegratedSensorPosition());
     }
 
     public void lockOn(double tx) {
-        if (Math.abs(tx) >= 1) {
-            turn(MAX_SPEED*tx / 20 + Math.signum(tx) * 0.05);
+        double offset = 0;
+        if (Math.abs(tx-offset) >= 1 && tx != 0) {
+            turn(MAX_SPEED*(tx-offset) / 20 + Math.signum(tx-offset) * 0.05);
         } else {
             turn(0);
         }

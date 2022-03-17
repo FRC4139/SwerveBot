@@ -4,6 +4,10 @@
 
 package frc.robot;
 
+import java.util.concurrent.ForkJoinTask;
+
+import javax.naming.spi.DirStateFactory;
+
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
@@ -114,7 +118,7 @@ public class Robot extends TimedRobot {
 
     // KEEP THESE BETWEEN -180 and 180 ??? TEST THIS
     //                     FL   FR   BR   BL
-    offsets = new double[]{-60.008, -114.44, 167.018, -14.128};
+    offsets = new double[]{120.19, -113.8, 171.36, 31.341};
     canCoderFL = new CANCoder(44);
     canCoderFR = new CANCoder(46);
     canCoderBR = new CANCoder(40);
@@ -128,7 +132,8 @@ public class Robot extends TimedRobot {
     driveController = new DriveController(moduleFL, moduleFR, moduleBR, moduleBL);
     
     time = new Timer();
-
+    intakeInOutTimer = new Timer();
+    intakeDoubleClickTimer = new Timer(); 
     kinematics = new SwerveDriveKinematics(locationFL, locationFR, locationBR, locationBL);
     odometry = new SwerveDriveOdometry(kinematics, pigeon.getRotation2d());
     autonomousHandler = new AutonomousHandler(kinematics, this); 
@@ -253,14 +258,14 @@ public class Robot extends TimedRobot {
       else turret.turn(0);
 
       // Control intake
-      if (intakeInOutTimer.get() == 0 || intakeInOutTimer >= 1.5) {
+      if (intakeInOutTimer.get() == 0 || intakeInOutTimer.get() >= 1.5) {
         if(controller.getLeftTriggerAxis() > 0.25) {
           intakeTalon.set(controller.getLeftTriggerAxis() * -0.8);
         } else intakeTalon.set(0);
 
         // Double clicking left bumper performs in and out maneuver
         if (controller.getLeftBumperReleased()) {
-          if (intakeDoubleClickTimer.get() == 0 || intakeDoubleClickTimer >= 0.25) {
+          if (intakeDoubleClickTimer.get() == 0 || intakeDoubleClickTimer.get() >= 0.25) {
             intakeDoubleClickTimer.reset();
             intakeDoubleClickTimer.start(); 
           } else {
@@ -280,7 +285,7 @@ public class Robot extends TimedRobot {
       }
       
       
-      ProcessLockOn();
+      ProcessLockOn(false);
     } 
 
     if (!turret.isCalibrated) {
@@ -336,7 +341,7 @@ public class Robot extends TimedRobot {
 
   /** This function is called periodically during test mode. */
   
-  private double[] distances = new double[]{0,0,0,0,0,0,0,0,0};
+  
 
   @Override
   public void testPeriodic() {
@@ -384,22 +389,29 @@ public class Robot extends TimedRobot {
 
   }
  
+  private double[] txs = new double[]{0,0,0,0,0,0,0,0,0};
+  private double[] tys = new double[]{0,0,0,0,0,0,0,0,0};
 
-  private void ProcessLockOn() {
+  public void ProcessLockOn(boolean auto) {
     double limeX = tx.getDouble(0.0);
     double limeY = ty.getDouble(0.0);
     double limeArea = ta.getDouble(0.0);
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
-    double distance = Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY));    
+    
 
-    for (int i = 0; i < 8; i++) distances[i] = distances[i+1];
-    distances[8] = distance;     
-
-    if(controller.getRightTriggerAxis() > 0.75) {
-      turret.lockOn(limeX);
+    for (int i = 0; i < 8; i++) txs[i] = txs[i+1];
+    for (int i = 0; i < 8; i++) tys[i] = tys[i+1];
+    txs[8] = prevX;  
+    tys[8] = prevY;     
+    double distance = Parallax.getDistanceToTarget(Math.toRadians(meanCal(9, txs)),Math.toRadians(meanCal(9, tys)));    
+    double turretRotation = turret.getTurretPosition();
+    if(controller.getRightTriggerAxis() > 0.75 || auto) {
+      turret.lockOn(meanCal(9, txs));
       //magazineTalon.set(-0.4);
-      double speed = -0.32 - (medianCal(9, distances) * 0.0374);
+      double speed = -0.3833514 + distance * -0.03238931 + turretRotation / 180000 * -0.00303879;
+      //double speed = -0.55;
+      speed *= 0.95;
       if (speed < -1.0) speed = -1.0; 
       
       shootTalon.set(speed);
@@ -416,41 +428,20 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);
     SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
-    SmartDashboard.putNumber("Distance", (medianCal(9, distances));
+    SmartDashboard.putNumber("Distance", distance);
 
 
   }
 
-  public void ProcessLockOnAutonomous() {
-    double limeX = tx.getDouble(0.0);
-    double limeY = ty.getDouble(0.0);
-    double limeArea = ta.getDouble(0.0);
-    double distance = Parallax.getDistanceToTarget(Math.toRadians(prevX),Math.toRadians(prevY));
-    if(limeX != 0) prevX = limeX;
-    if(limeY != 0) prevY = limeY;
-
-    for (int i = 0; i < 8; i++) distances[i] = distances[i+1];
-    distances[8] = distance; 
-
-    if (limeX != 0 && limeY != 0) {
-      turret.lockOn(limeX);
-      double speed = -0.32 - (medianCal(9, distances) * 0.0374);
-      if (speed < -1.0) speed = -1.0; 
-      
-      shootTalon.set(speed);
-    } else {
-      turret.searchForTarget();
-      shootTalon.set(0); 
+  private double meanCal(int n, double in[]) {
+    double sum = 0;
+    
+    for(int i=0; i< n; i++) {
+      sum += in[i];
+      if (i < n/2) sum += in[i];
     }
-        
-
-    SmartDashboard.putNumber("Limelight X", prevX);
-    SmartDashboard.putNumber("Limelight Y", prevY);
-    SmartDashboard.putNumber("Limelight Area", ta.getDouble(0.0));
-    SmartDashboard.putNumber("Distance", (medianCal(9, distances));
-
+    return sum / (n+n/2);
   }
-
   private double medianCal(int n,double in[]) {
     double m=0;	
     

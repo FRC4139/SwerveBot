@@ -11,6 +11,7 @@ public class AutonomousHandler {
     private Robot robot;
     private double firstTargetReachedTime = 0;
     private double secondTargetReachedTime = 0;
+    private double zeroStageTime = 0; 
     private final double TARGET_DISTANCE_FIRST_BALL = 6.5; // feet 
     private final double TARGET_DISTANCE_SECOND_BALL = 9; // feet
     private final double PROPORTION_DRIVE_CONSTANT = -1.0 / 15.0; 
@@ -30,13 +31,14 @@ public class AutonomousHandler {
     }
 
     public void Update(double currentTime, double perceivedDistance) {
-        SmartDashboard.put("Autonomous Time", currentTime);
-        SmartDashboard.put("First Target Reached Time", firstTargetReachedTime);
-        SmartDashboard.put("Second Target Reached Time", secondTargetReachedTime);
+        SmartDashboard.putNumber("Autonomous Time", currentTime);
+        SmartDashboard.putNumber("Zero Time", zeroStageTime);
+        SmartDashboard.putNumber("First Target Reached Time", firstTargetReachedTime);
+        SmartDashboard.putNumber("Second Target Reached Time", secondTargetReachedTime);
         SmartDashboard.putNumber("Auto Stage: ", stage); 
 
-        if (stage <= 4 && stage >= 0) robot.ProcessLockOnAutonomous(); 
-        else robot.shootTalon.set(0); 
+        //if (stage <= 4 && stage >= 0) robot.ProcessLockOnAutonomous(); 
+        //else robot.shootTalon.set(0); 
 
         if (stage == -2) {
             if (!robot.turret.isCalibrated) {
@@ -45,30 +47,34 @@ public class AutonomousHandler {
                 stage++; 
             }
         } else if (stage == -1) {
-            if (robot.turret.getTurretPosition() < 120000) {
+            if (robot.turret.getTurretPosition() < 150000) {
                 robot.turret.turn(0.2);
+                SmartDashboard.putNumber("turret value", robot.turret.getTurretPosition());
             } else {
                 stage++; 
                 robot.turret.turn(0); 
+                zeroStageTime = currentTime; 
             }
         } else if (stage == 0) {
-            if (Math.abs(perceivedDistance - TARGET_DISTANCE_FIRST_BALL) > 0.25) {
-                drive((perceivedDistance - TARGET_DISTANCE_FIRST_BALL) * PROPORTION_DRIVE_CONSTANT, 0, 0); 
+            if (currentTime - zeroStageTime < 1) {
+                drive(0.2, 0, 0); 
+                robot.turret.turn(0);
             }
             else {
                 stage++; 
                 firstTargetReachedTime = currentTime; 
             }
         } else if (stage == 1) {
-            if (currentTime - firstTargetReachedTime < 5) {
+            if (currentTime - firstTargetReachedTime < 3.5) {
                 // WAITING FOR REV UP
                 drive(0,0,0);
+                robot.ProcessLockOn(true); 
                 
-            } else if (currentTime - firstTargetReachedTime < 6) {
+            } else if (currentTime - firstTargetReachedTime < 5) {
                 // SHOOTING FIRST BALL
                 drive(0,0,0); 
                 robot.magazineTalon.set(-1);
-            } else if (currentTime - firstTargetReachedTime > 6) { 
+            } else if (currentTime - firstTargetReachedTime > 5) { 
                 
                 stage++; 
             }
@@ -109,8 +115,8 @@ public class AutonomousHandler {
     private double timeCheckpoint = 0; 
 
     public void UpdateTimedBackup(double currentTime)  {
-        if (stage <= 4 && stage >= 0) robot.ProcessLockOnAutonomous(); 
-        else robot.shootTalon.set(0); 
+        //if (stage <= 4 && stage >= 0) robot.ProcessLockOnAutonomous(); 
+        //else robot.shootTalon.set(0); 
 
         if (stage == -2) {
             if (!robot.turret.isCalibrated) {
