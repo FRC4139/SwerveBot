@@ -52,7 +52,7 @@ public class Turret {
     }
 
     public void lockOn(double tx) {
-        double offset = 0;
+        double offset = -5;
         if (Math.abs(tx-offset) >= 1 && tx != 0) {
             turn(MAX_SPEED*(tx-offset) / 20 + Math.signum(tx-offset) * 0.05);
         } else {

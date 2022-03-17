@@ -409,9 +409,10 @@ public class Robot extends TimedRobot {
     if(controller.getRightTriggerAxis() > 0.75 || auto) {
       turret.lockOn(meanCal(9, txs));
       //magazineTalon.set(-0.4);
-      double speed = -0.3833514 + distance * -0.03238931 + turretRotation / 180000 * -0.00303879;
+      //double speed = -0.3833514 + distance * -0.03238931 + turretRotation / 180000 * -0.00303879;
+      double speed = -0.38 + distance * -0.03;
       //double speed = -0.55;
-      speed *= 0.95;
+      speed *= 1;
       if (speed < -1.0) speed = -1.0; 
       
       shootTalon.set(speed);
