@@ -6,7 +6,7 @@ import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Turret {
-    private WPI_TalonFX turretTalon;
+    public WPI_TalonFX turretTalon;
     private DigitalInput limitSwitchInput; 
     public boolean isCalibrated; 
     private boolean searchDirectionPositive; 
@@ -19,6 +19,7 @@ public class Turret {
         limitSwitchInput = new DigitalInput(ls);
     }
 
+    /*
     public void calibrate() { 
         // negative is towards switch
         // positive is away 
@@ -31,6 +32,13 @@ public class Turret {
         }        
         SmartDashboard.putBoolean("turret calibrated", isCalibrated);
     }
+    */
+
+    public void calibrate() {
+        // we start the turret in the correct position
+        turretTalon.getSensorCollection().setIntegratedSensorPosition(0, 0);
+        isCalibrated = true;
+    }
 
     public void turn(double speed) {
         //SmartDashboard.putNumber("input speed", speed);
@@ -39,7 +47,7 @@ public class Turret {
             speed = Math.min(speed, 0);
             searchDirectionPositive = false;
         } 
-        if (!limitSwitchInput.get() || turretTalon.getSensorCollection().getIntegratedSensorPosition() < 5000) {
+        if (/*!limitSwitchInput.get() ||*/ turretTalon.getSensorCollection().getIntegratedSensorPosition() < 5000) {
             // only want positive
             speed = Math.max(speed, 0);
             searchDirectionPositive = true;

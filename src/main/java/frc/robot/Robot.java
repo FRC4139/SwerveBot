@@ -118,7 +118,7 @@ public class Robot extends TimedRobot {
 
     // KEEP THESE BETWEEN -180 and 180 ??? TEST THIS
     //                     FL   FR   BR   BL
-    offsets = new double[]{-67.291, -111.353, 171.36, 36.903};
+    offsets = new double[]{-67.291, -111.353, 171.36, 25.474};
     canCoderFL = new CANCoder(44);
     canCoderFR = new CANCoder(46);
     canCoderBR = new CANCoder(40);
@@ -216,11 +216,19 @@ public class Robot extends TimedRobot {
 
   /** This function is called once when teleop is enabled. */
   @Override
-  public void teleopInit() {}
+  public void teleopInit() {
+    if(!turret.isCalibrated)
+      turret.calibrate();
+  }
 
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
+    if(controller.getStartButtonPressed()) {
+      turret.isCalibrated = true;
+      turret.turretTalon.getSensorCollection().setIntegratedSensorPosition(0, 0);
+    }
+
     if(controller.getBackButtonPressed())
       fieldOriented = !fieldOriented;
     
@@ -287,11 +295,13 @@ public class Robot extends TimedRobot {
       
       
       ProcessLockOn(false);
-    } 
+    }
 
+    /*
     if (!turret.isCalibrated) {
       turret.calibrate();
     }
+    */
 
     // falcon 500 w/ talon fx max speed: 6380 RPM
    
@@ -411,9 +421,14 @@ public class Robot extends TimedRobot {
       turret.lockOn(meanCal(9, txs));
       //magazineTalon.set(-0.4);
       //double speed = -0.3833514 + distance * -0.03238931 + turretRotation / 180000 * -0.00303879;
-      double speed = -0.38 + distance * -0.03;
+      double speed = -0.4 + distance * -0.03;
       //double speed = -0.55;
-      speed *= 1;
+      if(controller.getRightBumper() && !controller.getLeftBumper())
+        speed *= 1.05;
+      else if(controller.getLeftBumper() && !controller.getRightBumper())
+        speed *= 0.95;
+      else
+        speed *= 1.0;
       if (speed < -1.0) speed = -1.0; 
       
       shootTalon.set(speed);
