@@ -107,7 +107,7 @@ public class Robot extends TimedRobot {
 
     magazineTalon = new WPI_TalonFX(33);
     shootTalon = new WPI_TalonFX(34);
-    turret = new Turret(35, 0); 
+    turret = new Turret(35, 0);   
     lifterTalon = new WPI_TalonFX(37);
     lifterTalon.setNeutralMode(NeutralMode.Brake);
     intakeTalon = new WPI_TalonSRX(3);
@@ -118,7 +118,7 @@ public class Robot extends TimedRobot {
 
     // KEEP THESE BETWEEN -180 and 180 ??? TEST THIS
     //                     FL   FR   BR   BL
-    offsets = new double[]{120.19, -113.8, 171.36, 31.341};
+    offsets = new double[]{-67.291, -111.353, 171.36, 36.903};
     canCoderFL = new CANCoder(44);
     canCoderFR = new CANCoder(46);
     canCoderBR = new CANCoder(40);
@@ -148,6 +148,7 @@ public class Robot extends TimedRobot {
     limelightTable.getEntry("ledMode").setNumber(3); // always on
     limelightTable.getEntry("camMode").setNumber(0); // vision processor (not driver camera)
 
+    pigeon.calibrate();
     fieldOriented = true;
   }
 
@@ -460,3 +461,24 @@ public class Robot extends TimedRobot {
     
   }
 }
+/*
+
+
+
+                               
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/
