@@ -221,7 +221,9 @@ public class Robot extends TimedRobot {
   public void teleopInit() {
     if(!turret.isCalibrated)
       turret.calibrate();
+    
   }
+  public double offset = -2;
 
   /** This function is called periodically during operator control. */
   @Override
@@ -269,6 +271,16 @@ public class Robot extends TimedRobot {
       else if (controller.getBButton()) turret.turn(Turret.MAX_SPEED);
       else turret.turn(0);
 
+      // Control turret offset while locking on
+      if (controller.getRightTriggerAxis() > 0.75){
+        if (controller.getBButtonPressed()){
+          offset += 1;
+        }
+        if (controller.getXButtonPressed()){
+          offset -= 1;
+        }
+      }
+
       // Control intake
       if (intakeInOutTimer.get() == 0 || intakeInOutTimer.get() >= 1.5) {
         if(controller.getLeftTriggerAxis() > 0.25) {
@@ -297,7 +309,7 @@ public class Robot extends TimedRobot {
       }
       
       
-      ProcessLockOn(false);
+      ProcessLockOn(false, offset);
     }
 
     /*
@@ -422,11 +434,7 @@ public class Robot extends TimedRobot {
     double turretRotation = turret.getTurretPosition();
     if(controller.getRightTriggerAxis() > 0.75 || auto) {
       turret.lockOn(meanCal(9, txs), offset);
-      if(controller.getXButtonPressed()) {
-        offset -= 1;
-      } else if(controller.getBButtonPressed()) {
-        offset += 1;
-      }
+      
       //magazineTalon.set(-0.4);
       //double speed = -0.3833514 + distance * -0.03238931 + turretRotation / 180000 * -0.00303879;
       double speed = -0.4 + distance * -0.03;
