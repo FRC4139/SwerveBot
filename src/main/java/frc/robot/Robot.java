@@ -118,7 +118,7 @@ public class Robot extends TimedRobot {
 
     // KEEP THESE BETWEEN -180 and 180 ??? TEST THIS
     //                     FL   FR   BR   BL
-    offsets = new double[]{-67.291, -111.353, 171.36, 25.474};
+    offsets = new double[]{-63.317, -111.353, 171.36, 49.112}; // offset string here
     canCoderFL = new CANCoder(44);
     canCoderFR = new CANCoder(46);
     canCoderBR = new CANCoder(40);
@@ -179,6 +179,8 @@ public class Robot extends TimedRobot {
     //m_autoSelected = m_chooser.getSelected();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     //System.out.println("Auto selected: " + m_autoSelected);
+    if(!turret.isCalibrated)
+      turret.calibrate();
   }
 
   /** This function is called periodically during autonomous. */
@@ -206,7 +208,7 @@ public class Robot extends TimedRobot {
     if(limeX != 0) prevX = limeX;
     if(limeY != 0) prevY = limeY;
     double dist = Parallax.getDistanceToTarget(Math.toRadians(prevX), Math.toRadians(prevY));
-    if (dist < 15) autonomousHandler.Update(time.get(), dist);
+    autonomousHandler.Update(time.get(), dist);
     //autonomousHandler.UpdateTimedBackup(time.get());
     SmartDashboard.putNumber("Limelight X", prevX);
     SmartDashboard.putNumber("Limelight Y", prevY);
@@ -224,10 +226,11 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    if(controller.getStartButtonPressed()) {
+    /*if(controller.getStartButtonPressed()) {
       turret.isCalibrated = true;
       turret.turretTalon.getSensorCollection().setIntegratedSensorPosition(0, 0);
     }
+    */
 
     if(controller.getBackButtonPressed())
       fieldOriented = !fieldOriented;

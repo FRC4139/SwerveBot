@@ -11,7 +11,7 @@ public class Turret {
     public boolean isCalibrated; 
     private boolean searchDirectionPositive; 
 
-    private static final int MAX_SENSOR_POSITION = 185000;
+    private static final int MAX_SENSOR_POSITION = 175000;
     public static final double MAX_SPEED = 0.2;
     
     public Turret(int tf, int ls) { 
@@ -60,7 +60,7 @@ public class Turret {
     }
 
     public void lockOn(double tx) {
-        double offset = -5;
+        double offset = -2;
         if (Math.abs(tx-offset) >= 1 && tx != 0) {
             turn(MAX_SPEED*(tx-offset) / 20 + Math.signum(tx-offset) * 0.05);
         } else {
