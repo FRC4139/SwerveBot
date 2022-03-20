@@ -406,7 +406,7 @@ public class Robot extends TimedRobot {
   private double[] txs = new double[]{0,0,0,0,0,0,0,0,0};
   private double[] tys = new double[]{0,0,0,0,0,0,0,0,0};
 
-  public void ProcessLockOn(boolean auto) {
+  public void ProcessLockOn(boolean auto, double offset) {
     double limeX = tx.getDouble(0.0);
     double limeY = ty.getDouble(0.0);
     double limeArea = ta.getDouble(0.0);
@@ -421,7 +421,12 @@ public class Robot extends TimedRobot {
     double distance = Parallax.getDistanceToTarget(Math.toRadians(meanCal(9, txs)),Math.toRadians(meanCal(9, tys)));    
     double turretRotation = turret.getTurretPosition();
     if(controller.getRightTriggerAxis() > 0.75 || auto) {
-      turret.lockOn(meanCal(9, txs));
+      turret.lockOn(meanCal(9, txs), offset);
+      if(controller.getXButtonPressed()) {
+        offset -= 1;
+      } else if(controller.getBButtonPressed()) {
+        offset += 1;
+      }
       //magazineTalon.set(-0.4);
       //double speed = -0.3833514 + distance * -0.03238931 + turretRotation / 180000 * -0.00303879;
       double speed = -0.4 + distance * -0.03;
@@ -452,7 +457,9 @@ public class Robot extends TimedRobot {
 
 
   }
-
+  public void ProcessLockOn(boolean auto) {
+    ProcessLockOn(auto, 0);
+  }
   private double meanCal(int n, double in[]) {
     double sum = 0;
     

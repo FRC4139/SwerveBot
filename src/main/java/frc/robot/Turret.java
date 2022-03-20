@@ -68,6 +68,13 @@ public class Turret {
         }
         
     }
+    public void lockOn(double tx, double offset){
+        if (Math.abs(tx-offset) >= 1 && tx != 0) {
+            turn(MAX_SPEED*(tx-offset) / 20 + Math.signum(tx-offset) * 0.05);
+        } else {
+            turn(0);
+        }
+    }
 
     public void searchForTarget() {
         if (searchDirectionPositive) {
